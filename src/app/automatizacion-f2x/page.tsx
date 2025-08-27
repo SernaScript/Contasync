@@ -39,11 +39,10 @@ export default function AutomatizacionF2X() {
           {/* Formulario Principal */}
           <div className="lg:col-span-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Configuración de Proceso F2X</CardTitle>
-                <CardDescription>
-                  Ingrese los parámetros necesarios para iniciar el procesamiento automático
-                </CardDescription>
+              <CardHeader>              <CardTitle>Configuración de Proceso F2X</CardTitle>
+              <CardDescription>
+                Complete el NIT, contraseña y seleccione el rango de fechas para iniciar el procesamiento automático
+              </CardDescription>
               </CardHeader>
               <CardContent>
                 <LoginForm 
@@ -86,8 +85,8 @@ export default function AutomatizacionF2X() {
                     <li>• Se conecta automáticamente a Flypass</li>
                     <li>• Autentica con NIT y contraseña</li>
                     <li>• Navega a la sección de facturas</li>
-                    <li>• Aplica filtros de fecha especificados</li>
-                    <li>• Descarga el archivo con las facturas</li>
+                    <li>• Aplica el rango de fechas seleccionado</li>
+                    <li>• Descarga el archivo con las facturas del período</li>
                   </ul>
                 </div>
                 <div>
@@ -162,6 +161,7 @@ export default function AutomatizacionF2X() {
                 <h4 className="font-semibold mb-2">Capacidades</h4>
                 <ul className="space-y-1 text-gray-600">
                   <li>• Procesamiento automático</li>
+                  <li>• Selector de rango de fechas</li>
                   <li>• Manejo de errores</li>
                   <li>• Reintentos inteligentes</li>
                   <li>• Capturas de pantalla</li>

@@ -5,15 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DatePicker } from "@/components/ui/date-picker"
-import { format } from "date-fns"
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { format, subDays } from "date-fns"
+import { es } from "date-fns/locale"
+import { Loader2, CheckCircle, AlertCircle, Calendar } from "lucide-react"
 
 interface FormData {
   nit: string
   password: string
-  startDate?: Date
-  endDate?: Date
 }
 
 interface LoginFormProps {
@@ -28,12 +26,20 @@ interface ScrapingResult {
   error?: string
 }
 
+// Función para obtener el rango de fechas automático (últimos 60 días)
+const getDateRange = () => {
+  const today = new Date()
+  const startDate = subDays(today, 60)
+  return {
+    from: startDate,
+    to: today
+  }
+}
+
 export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFormProps) {
   const [formData, setFormData] = useState<FormData>({
     nit: "",
-    password: "",
-    startDate: undefined,
-    endDate: undefined
+    password: ""
   })
 
   const [isLoading, setIsLoading] = useState(false)
@@ -43,7 +49,7 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
     e.preventDefault()
     
     // Validar que todos los campos estén llenos
-    if (!formData.nit || !formData.password || !formData.startDate || !formData.endDate) {
+    if (!formData.nit || !formData.password) {
       setResult({
         success: false,
         message: "Todos los campos son requeridos",
@@ -56,12 +62,15 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
     setResult(null)
 
     try {
+      // Obtener el rango de fechas automático (últimos 60 días)
+      const dateRange = getDateRange()
+      
       // Formatear las fechas para enviar al API
       const payload = {
         nit: formData.nit,
         password: formData.password,
-        startDate: format(formData.startDate, 'yyyy-MM-dd'),
-        endDate: format(formData.endDate, 'yyyy-MM-dd')
+        startDate: format(dateRange.from, 'yyyy-MM-dd'),
+        endDate: format(dateRange.to, 'yyyy-MM-dd')
       }
 
       console.log('🚀 Enviando datos de scraping:', { ...payload, password: '***' })
@@ -95,7 +104,7 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
     }
   }
 
-  const handleInputChange = (field: keyof FormData, value: string | Date | undefined) => {
+  const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -106,6 +115,9 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
       setResult(null)
     }
   }
+
+  // Obtener el rango de fechas actual para mostrar al usuario
+  const currentDateRange = getDateRange()
 
   return (
     <Card className="w-full max-w-lg mx-auto">
@@ -144,27 +156,34 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
             />
           </div>
 
-          {/* Rango de Fechas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start-date">Fecha Inicial</Label>
-              <DatePicker
-                date={formData.startDate}
-                onDateChange={(date) => handleInputChange('startDate', date)}
-                placeholder="Fecha inicial"
-                className={isLoading ? "opacity-50" : ""}
-              />
+          {/* Información del Rango de Fechas Automático */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Período de Consulta (Automático)
+            </Label>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-sm text-blue-800">
+                <div className="font-medium mb-1">Se consultarán los últimos 60 días:</div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-blue-600">Desde:</span>
+                    <div className="font-semibold">{format(currentDateRange.from, "dd 'de' MMMM 'de' yyyy", { locale: es })}</div>
+                  </div>
+                  <div className="text-blue-400 mx-2">→</div>
+                  <div>
+                    <span className="text-xs text-blue-600">Hasta:</span>
+                    <div className="font-semibold">{format(currentDateRange.to, "dd 'de' MMMM 'de' yyyy", { locale: es })}</div>
+                  </div>
+                </div>
+                <div className="text-xs text-blue-600 mt-2">
+                  Total de días: 61 días
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="end-date">Fecha Final</Label>
-              <DatePicker
-                date={formData.endDate}
-                onDateChange={(date) => handleInputChange('endDate', date)}
-                placeholder="Fecha final"
-                className={isLoading ? "opacity-50" : ""}
-              />
-            </div>
+            <p className="text-xs text-gray-500">
+              El sistema consultará automáticamente las facturas de los últimos 60 días hasta hoy
+            </p>
           </div>
 
           {/* Resultado del scraping */}
