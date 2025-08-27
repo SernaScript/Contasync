@@ -1,0 +1,100 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { 
+  Home, 
+  FileText, 
+  Settings, 
+  BarChart3,
+  Users,
+  Database
+} from "lucide-react"
+
+const navigation = [
+  {
+    name: "Inicio",
+    href: "/",
+    icon: Home,
+  },
+  {
+    name: "Automatización F2X",
+    href: "/automatizacion-f2x",
+    icon: FileText,
+  },
+  {
+    name: "Reportes",
+    href: "/reportes",
+    icon: BarChart3,
+  },
+  {
+    name: "Usuarios",
+    href: "/usuarios",
+    icon: Users,
+  },
+  {
+    name: "Base de Datos",
+    href: "/base-datos",
+    icon: Database,
+  },
+  {
+    name: "Configuración",
+    href: "/configuracion",
+    icon: Settings,
+  },
+]
+
+export function Sidebar() {
+  const pathname = usePathname()
+
+  return (
+    <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen fixed left-0 top-0 z-40">
+      <div className="flex flex-col h-full">
+        {/* Logo/Header */}
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            Sistema TYVG
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Panel de Control
+          </p>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            const Icon = item.icon
+
+            return (
+              <Link key={item.name} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-2 text-left",
+                    isActive && "bg-primary text-primary-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.name}
+                </Button>
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <Card className="p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Versión 1.0.0
+            </p>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
