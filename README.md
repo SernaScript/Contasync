@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TYVG Project
 
-## Getting Started
+Un proyecto moderno de Next.js construido con las mejores tecnologías web actuales.
 
-First, run the development server:
+## 🚀 Tecnologías
+
+- **Framework**: Next.js 14+ con App Router
+- **Lenguaje**: TypeScript
+- **UI Library**: React
+- **Componentes**: ShadCN UI
+- **Estilos**: Tailwind CSS
+- **Linting**: ESLint
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── app/                 # Páginas (App Router)
+├── components/          # Componentes React
+│   └── ui/             # Componentes ShadCN UI
+└── lib/                # Utilidades
+```
+
+## 🛠️ Instalación y Uso
+
+### Prerrequisitos
+
+- Node.js 18+ 
+- npm, yarn, pnpm o bun
+
+### Instalación
+
+1. Clona el repositorio
+2. Instala las dependencias:
+
+```bash
+npm install
+# o
+yarn install
+# o
+pnpm install
+# o
+bun install
+```
+
+### Desarrollo
+
+Ejecuta el servidor de desarrollo:
 
 ```bash
 npm run dev
-# or
+# o
 yarn dev
-# or
+# o
 pnpm dev
-# or
+# o
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador para ver el resultado.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Comandos Disponibles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` - Inicia el servidor de desarrollo
+- `npm run build` - Construye la aplicación para producción
+- `npm run start` - Inicia el servidor de producción
+- `npm run lint` - Ejecuta ESLint
 
-## Learn More
+## 🎨 ShadCN UI
 
-To learn more about Next.js, take a look at the following resources:
+Este proyecto utiliza ShadCN UI para los componentes. Para añadir nuevos componentes:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx shadcn@latest add [component-name]
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Componentes disponibles: [ShadCN UI Components](https://ui.shadcn.com/docs/components)
 
-## Deploy on Vercel
+## 📚 Recursos
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [ShadCN UI Documentation](https://ui.shadcn.com)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Despliegue
+
+La forma más fácil de desplegar tu aplicación Next.js es usar [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+
+Consulta la [documentación de despliegue de Next.js](https://nextjs.org/docs/app/building-your-application/deploying) para más detalles.
