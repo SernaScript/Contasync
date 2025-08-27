@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/ui/date-picker"
+import { format } from "date-fns"
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
 
 interface FormData {
   nit: string
@@ -19,6 +21,13 @@ interface LoginFormProps {
   title?: string
 }
 
+interface ScrapingResult {
+  success: boolean
+  message: string
+  data?: any
+  error?: string
+}
+
 export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFormProps) {
   const [formData, setFormData] = useState<FormData>({
     nit: "",
@@ -27,9 +36,63 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
     endDate: undefined
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [result, setResult] = useState<ScrapingResult | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit?.(formData)
+    
+    // Validar que todos los campos estén llenos
+    if (!formData.nit || !formData.password || !formData.startDate || !formData.endDate) {
+      setResult({
+        success: false,
+        message: "Todos los campos son requeridos",
+        error: "Todos los campos son requeridos"
+      })
+      return
+    }
+
+    setIsLoading(true)
+    setResult(null)
+
+    try {
+      // Formatear las fechas para enviar al API
+      const payload = {
+        nit: formData.nit,
+        password: formData.password,
+        startDate: format(formData.startDate, 'yyyy-MM-dd'),
+        endDate: format(formData.endDate, 'yyyy-MM-dd')
+      }
+
+      console.log('🚀 Enviando datos de scraping:', { ...payload, password: '***' })
+
+      const response = await fetch('/api/flypass-scraping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const data: ScrapingResult = await response.json()
+      
+      setResult(data)
+      
+      // Llamar callback si existe
+      if (onSubmit) {
+        onSubmit(formData)
+      }
+
+    } catch (error) {
+      console.error('❌ Error enviando formulario:', error)
+      setResult({
+        success: false,
+        message: 'Error de conexión. Inténtelo de nuevo.',
+        error: 'Error de conexión. Inténtelo de nuevo.'
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleInputChange = (field: keyof FormData, value: string | Date | undefined) => {
@@ -37,6 +100,11 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
       ...prev,
       [field]: value
     }))
+    
+    // Limpiar resultado cuando se cambian los datos
+    if (result) {
+      setResult(null)
+    }
   }
 
   return (
@@ -57,6 +125,7 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
               placeholder="Ingrese su NIT"
               value={formData.nit}
               onChange={(e) => handleInputChange('nit', e.target.value)}
+              disabled={isLoading}
               required
             />
           </div>
@@ -70,6 +139,7 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
               placeholder="Ingrese su contraseña"
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
+              disabled={isLoading}
               required
             />
           </div>
@@ -82,6 +152,7 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
                 date={formData.startDate}
                 onDateChange={(date) => handleInputChange('startDate', date)}
                 placeholder="Fecha inicial"
+                className={isLoading ? "opacity-50" : ""}
               />
             </div>
             
@@ -91,13 +162,56 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
                 date={formData.endDate}
                 onDateChange={(date) => handleInputChange('endDate', date)}
                 placeholder="Fecha final"
+                className={isLoading ? "opacity-50" : ""}
               />
             </div>
           </div>
 
+          {/* Resultado del scraping */}
+          {result && (
+            <div className={`p-4 rounded-lg border ${
+              result.success 
+                ? 'bg-green-50 border-green-200 text-green-800' 
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                {result.success ? (
+                  <CheckCircle className="h-5 w-5" />
+                ) : (
+                  <AlertCircle className="h-5 w-5" />
+                )}
+                <p className="font-medium">
+                  {result.success ? 'Éxito' : 'Error'}
+                </p>
+              </div>
+              <p className="mt-1 text-sm">
+                {result.message || result.error}
+              </p>
+              {result.data && (
+                <div className="mt-2 text-xs">
+                  <p>NIT: {result.data.nit}</p>
+                  <p>Rango: {result.data.dateRange}</p>
+                  <p>Procesado: {new Date(result.data.downloadTime).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Botón de envío */}
-          <Button type="submit" className="w-full" size="lg">
-            Enviar
+          <Button 
+            type="submit" 
+            className="w-full" 
+            size="lg"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              'Iniciar Scraping F2X'
+            )}
           </Button>
         </form>
       </CardContent>

@@ -2,14 +2,18 @@
 
 import { MainLayout } from "@/components/MainLayout"
 import { LoginForm } from "@/components/LoginForm"
+import { ScrapingStatus } from "@/components/ScrapingStatus"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Clock, CheckCircle, AlertCircle } from "lucide-react"
+import { FileText, Clock, CheckCircle, AlertCircle, Zap, Shield, Database } from "lucide-react"
 
 export default function AutomatizacionF2X() {
   const handleFormSubmit = (data: any) => {
     console.log('Datos del formulario F2X:', data)
-    // Aquí puedes agregar la lógica para procesar los datos del formulario
-    alert('Procesando automatización F2X...')
+  }
+
+  const handleRefreshStatus = () => {
+    console.log('Refrescando estado del sistema...')
+    // Aquí podrías agregar lógica para actualizar el estado en tiempo real
   }
 
   return (
@@ -52,109 +56,124 @@ export default function AutomatizacionF2X() {
 
           {/* Panel de Estado */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Estado del Sistema</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Conexión a BD: Activa</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Servicio F2X: Operativo</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm">Cola de procesamiento: 3 pendientes</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Estadísticas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Procesados hoy:</span>
-                  <span className="font-semibold">127</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Tiempo promedio:</span>
-                  <span className="font-semibold">2.3 min</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Éxito:</span>
-                  <span className="font-semibold text-green-600">98.5%</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Procesos Recientes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center space-x-2 text-sm">
-                  <Clock className="h-3 w-3 text-gray-400" />
-                  <span>10:30 - Proceso completado</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Clock className="h-3 w-3 text-gray-400" />
-                  <span>10:25 - Validación exitosa</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Clock className="h-3 w-3 text-gray-400" />
-                  <span>10:20 - Iniciando proceso</span>
-                </div>
-              </CardContent>
-            </Card>
+            <ScrapingStatus 
+              isActive={false}
+              lastRun="Nunca"
+              totalProcessed={0}
+              successRate={0}
+              onRefresh={handleRefreshStatus}
+            />
           </div>
         </div>
 
         {/* Información adicional */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-500" />
+                Proceso de Scraping F2X
+              </CardTitle>
+              <CardDescription>
+                Automatización completa del proceso de descarga de facturas desde Flypass
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <h4 className="font-semibold mb-2">¿Qué hace este proceso?</h4>
+                  <ul className="space-y-1 text-gray-600 ml-4">
+                    <li>• Se conecta automáticamente a Flypass</li>
+                    <li>• Autentica con NIT y contraseña</li>
+                    <li>• Navega a la sección de facturas</li>
+                    <li>• Aplica filtros de fecha especificados</li>
+                    <li>• Descarga el archivo con las facturas</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Tiempo estimado:</h4>
+                  <p className="text-gray-600">2-3 minutos por ejecución</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-500" />
+                Seguridad y Validaciones
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <h4 className="font-semibold mb-2">Medidas de Seguridad</h4>
+                  <ul className="space-y-1 text-gray-600 ml-4">
+                    <li>• Las credenciales no se almacenan</li>
+                    <li>• Conexión HTTPS segura</li>
+                    <li>• Validación de formato de datos</li>
+                    <li>• Manejo de errores robusto</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Validaciones</h4>
+                  <ul className="space-y-1 text-gray-600 ml-4">
+                    <li>• Formato válido de NIT</li>
+                    <li>• Rango de fechas coherente</li>
+                    <li>• Disponibilidad del servicio</li>
+                    <li>• Integridad de descarga</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Información técnica */}
         <Card>
           <CardHeader>
-            <CardTitle>Información del Módulo F2X</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-purple-500" />
+              Información Técnica del Módulo F2X
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <div>
-                <h4 className="font-semibold mb-2">Funcionalidades</h4>
+                <h4 className="font-semibold mb-2">Tecnologías</h4>
                 <ul className="space-y-1 text-gray-600">
-                  <li>• Validación automática de datos</li>
-                  <li>• Procesamiento en lotes</li>
-                  <li>• Generación de reportes</li>
-                  <li>• Notificaciones en tiempo real</li>
+                  <li>• Playwright WebDriver</li>
+                  <li>• TypeScript/Node.js</li>
+                  <li>• Next.js API Routes</li>
+                  <li>• Chromium Browser</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-semibold mb-2">Formatos Soportados</h4>
                 <ul className="space-y-1 text-gray-600">
-                  <li>• XML F2X</li>
-                  <li>• CSV estructurado</li>
-                  <li>• JSON normalizado</li>
-                  <li>• Excel (.xlsx)</li>
+                  <li>• Archivos Excel (.xlsx)</li>
+                  <li>• Datos CSV</li>
+                  <li>• Reportes PDF</li>
+                  <li>• Logs JSON</li>
                 </ul>
               </div>
               <div>
-                <h4 className="font-semibold mb-2">Validaciones</h4>
+                <h4 className="font-semibold mb-2">Capacidades</h4>
                 <ul className="space-y-1 text-gray-600">
-                  <li>• Formato de NIT</li>
-                  <li>• Rangos de fechas</li>
-                  <li>• Integridad de datos</li>
-                  <li>• Duplicados</li>
+                  <li>• Procesamiento automático</li>
+                  <li>• Manejo de errores</li>
+                  <li>• Reintentos inteligentes</li>
+                  <li>• Capturas de pantalla</li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-semibold mb-2">Salidas</h4>
                 <ul className="space-y-1 text-gray-600">
-                  <li>• Reportes PDF</li>
-                  <li>• Archivos procesados</li>
-                  <li>• Logs detallados</li>
-                  <li>• Estadísticas</li>
+                  <li>• Archivo descargado</li>
+                  <li>• Log de actividades</li>
+                  <li>• Reporte de estado</li>
+                  <li>• Métricas de tiempo</li>
                 </ul>
               </div>
             </div>
