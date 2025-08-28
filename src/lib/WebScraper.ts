@@ -1,9 +1,11 @@
 import { Browser, BrowserContext, Page, chromium, firefox, webkit } from 'playwright';
+import path from 'path';
 
 export interface WebScraperConfig {
   browserType?: 'chromium' | 'firefox' | 'webkit';
   headless?: boolean;
   timeout?: number;
+  downloadPath?: string;
 }
 
 export interface ScrapingResult {
@@ -23,7 +25,8 @@ export default class WebScraper {
     this.config = {
       browserType: config.browserType || 'chromium',
       headless: config.headless !== undefined ? config.headless : true,
-      timeout: config.timeout || 30000
+      timeout: config.timeout || 30000,
+      downloadPath: config.downloadPath
     };
   }
 
@@ -42,7 +45,18 @@ export default class WebScraper {
           this.browser = await chromium.launch({ headless: this.config.headless });
       }
 
-      this.context = await this.browser.newContext();
+      // Configurar contexto con directorio de descarga si se especifica
+      const contextOptions: any = {};
+      if (this.config.downloadPath) {
+        contextOptions.acceptDownloads = true;
+        // Crear el directorio si no existe
+        const fs = require('fs');
+        if (!fs.existsSync(this.config.downloadPath)) {
+          fs.mkdirSync(this.config.downloadPath, { recursive: true });
+        }
+      }
+
+      this.context = await this.browser.newContext(contextOptions);
       this.page = await this.context.newPage();
       
       // Configurar timeout por defecto
@@ -95,6 +109,26 @@ export default class WebScraper {
     
     await this.page.screenshot({ path: filename });
     console.log(`📸 Captura guardada: ${filename}`);
+  }
+
+  async waitForDownload(timeout: number = 30000): Promise<string> {
+    if (!this.page) {
+      throw new Error('El navegador no está inicializado.');
+    }
+
+    console.log('⏳ Esperando descarga...');
+    
+    const download = await this.page.waitForEvent('download', { timeout });
+    const filePath = path.join(this.config.downloadPath || './downloads', download.suggestedFilename() || 'download');
+    
+    await download.saveAs(filePath);
+    console.log(`📥 Archivo descargado: ${filePath}`);
+    
+    return filePath;
+  }
+
+  getDownloadPath(): string | undefined {
+    return this.config.downloadPath;
   }
 
   async close(): Promise<void> {
