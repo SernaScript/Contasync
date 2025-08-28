@@ -28,7 +28,7 @@ export class FlypassScraper {
       
       // PASO 2: Ir a la página de Flypass
       console.log('🌐 Navegando a Flypass...');
-      await this.scraper.navigateTo('https://clientes.flypass.com.co/');
+      this.scraper.navigateTo('https://clientes.flypass.com.co/');
       
       // PASO 3: Esperar y llenar el formulario de login
       await this.scraper.waitForSelector('input[name="username"]');
