@@ -12,6 +12,7 @@ import { Loader2, CheckCircle, AlertCircle, Calendar } from "lucide-react"
 interface FormData {
   nit: string
   password: string
+  processToDatabase: boolean
 }
 
 interface LoginFormProps {
@@ -39,7 +40,8 @@ const getDateRange = () => {
 export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFormProps) {
   const [formData, setFormData] = useState<FormData>({
     nit: "",
-    password: ""
+    password: "",
+    processToDatabase: true
   })
 
   const [isLoading, setIsLoading] = useState(false)
@@ -70,7 +72,8 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
         nit: formData.nit,
         password: formData.password,
         startDate: format(dateRange.from, 'yyyy-MM-dd'),
-        endDate: format(dateRange.to, 'yyyy-MM-dd')
+        endDate: format(dateRange.to, 'yyyy-MM-dd'),
+        processToDatabase: formData.processToDatabase
       }
 
       console.log('🚀 Enviando datos de scraping:', { ...payload, password: '***' })
@@ -104,7 +107,7 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
     }
   }
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
+  const handleInputChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -154,6 +157,27 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
               disabled={isLoading}
               required
             />
+          </div>
+
+          {/* Opción de procesamiento a base de datos */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <input
+                id="processToDatabase"
+                type="checkbox"
+                title="Procesar automáticamente a la base de datos"
+                checked={formData.processToDatabase}
+                onChange={(e) => handleInputChange('processToDatabase', e.target.checked)}
+                disabled={isLoading}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <Label htmlFor="processToDatabase" className="text-sm font-medium">
+                Procesar automáticamente a la base de datos
+              </Label>
+            </div>
+            <p className="text-xs text-gray-500 ml-6">
+              Si está habilitado, el archivo Excel descargado se procesará automáticamente y las facturas se guardarán en la base de datos
+            </p>
           </div>
 
           {/* Información del Rango de Fechas Automático */}

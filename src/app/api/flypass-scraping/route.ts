@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       nit,
       password,
       startDate,
-      endDate
+      endDate,
+      processToDatabase: body.processToDatabase || false
     };
 
     // Ejecutar el scraping

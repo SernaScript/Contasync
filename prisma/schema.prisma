@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  nit       String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  invoices Invoice[]
+
+  @@map("companies")
+}
+
+model Invoice {
+  id             String   @id @default(cuid())
+  
+  // Información básica de la factura
+  invoiceNumber  String
+  documentType   String
+  issueDate      DateTime
+  dueDate        DateTime?
+  
+  // Información financiera
+  subtotal       Decimal  @db.Decimal(12, 2)
+  tax            Decimal  @db.Decimal(12, 2)
+  total          Decimal  @db.Decimal(12, 2)
+  
+  // Estado de la factura
+  status         String   @default("pending") // pending, paid, overdue, cancelled
+  
+  // Información del proveedor/cliente
+  supplierName   String?
+  supplierNit    String?
+  
+  // Descripción y observaciones
+  description    String?
+  observations   String?
+  
+  // Metadatos del scraping
+  scrapedAt      DateTime @default(now())
+  sourceFile     String?  // Nombre del archivo Excel original
+  
+  // Relaciones
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+model ScrapingLog {
+  id          String   @id @default(cuid())
+  
+  // Información del scraping
+  companyNit  String
+  startDate   DateTime
+  endDate     DateTime
+  
+  // Resultado del scraping
+  status      String   // success, error, partial
+  message     String?
+  
+  // Archivos procesados
+  fileName    String?
+  recordsFound Int     @default(0)
+  recordsProcessed Int @default(0)
+  recordsErrors Int    @default(0)
+  
+  // Metadatos
+  duration    Int?     // Duración en segundos
+  errorDetails String? // Detalles del error si los hay
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("scraping_logs")
+}

@@ -87,6 +87,7 @@ export default function AutomatizacionF2X() {
                     <li>• Navega a la sección de facturas</li>
                     <li>• Aplica el rango de fechas seleccionado</li>
                     <li>• Descarga el archivo con las facturas del período</li>
+                    <li>• <strong>Opcional:</strong> Procesa automáticamente a la base de datos</li>
                   </ul>
                 </div>
                 <div>
