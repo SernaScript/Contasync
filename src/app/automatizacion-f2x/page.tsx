@@ -1,182 +1,76 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { MainLayout } from "@/components/MainLayout"
-import { LoginForm } from "@/components/LoginForm"
-import { ScrapingStatus } from "@/components/ScrapingStatus"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Clock, CheckCircle, AlertCircle, Zap, Shield, Database } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ArrowRight, Info } from "lucide-react"
+import Link from "next/link"
 
-export default function AutomatizacionF2X() {
-  const handleFormSubmit = (data: any) => {
-    console.log('Datos del formulario F2X:', data)
-  }
+export default function AutomatizacionF2XRedirect() {
+  const router = useRouter()
 
-  const handleRefreshStatus = () => {
-    console.log('Refrescando estado del sistema...')
-    // Aquí podrías agregar lógica para actualizar el estado en tiempo real
-  }
+  useEffect(() => {
+    // Redirect after 5 seconds
+    const timer = setTimeout(() => {
+      router.push("/areas/contabilidad/automatizacion-f2x")
+    }, 5000)
+
+    return () => clearTimeout(timer)
+  }, [router])
 
   return (
     <MainLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Automatización F2X
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-2">
-              Procesamiento automático de documentos F2X con validación y análisis de datos
-            </p>
-          </div>
-          <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground">
-            <FileText className="mr-1 h-3 w-3" />
-            Módulo Activo
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Formulario Principal */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>              <CardTitle>Configuración de Proceso F2X</CardTitle>
-              <CardDescription>
-                Complete el NIT, contraseña y seleccione el rango de fechas para iniciar el procesamiento automático
-              </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <LoginForm 
-                  onSubmit={handleFormSubmit}
-                  title=""
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Panel de Estado */}
-          <div className="space-y-6">
-            <ScrapingStatus 
-              isActive={false}
-              lastRun="Nunca"
-              totalProcessed={0}
-              successRate={0}
-              onRefresh={handleRefreshStatus}
-            />
-          </div>
-        </div>
-
-        {/* Información adicional */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-blue-500" />
-                Proceso de Scraping F2X
-              </CardTitle>
-              <CardDescription>
-                Automatización completa del proceso de descarga de facturas desde Flypass
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h4 className="font-semibold mb-2">¿Qué hace este proceso?</h4>
-                  <ul className="space-y-1 text-gray-600 ml-4">
-                    <li>• Se conecta automáticamente a Flypass</li>
-                    <li>• Autentica con NIT y contraseña</li>
-                    <li>• Navega a la sección de facturas</li>
-                    <li>• Aplica el rango de fechas seleccionado</li>
-                    <li>• Descarga el archivo con las facturas del período</li>
-                    <li>• <strong>Opcional:</strong> Procesa automáticamente a la base de datos</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Tiempo estimado:</h4>
-                  <p className="text-gray-600">2-3 minutos por ejecución</p>
-                </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Info className="h-8 w-8 text-blue-600" />
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-500" />
-                Seguridad y Validaciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h4 className="font-semibold mb-2">Medidas de Seguridad</h4>
-                  <ul className="space-y-1 text-gray-600 ml-4">
-                    <li>• Las credenciales no se almacenan</li>
-                    <li>• Conexión HTTPS segura</li>
-                    <li>• Validación de formato de datos</li>
-                    <li>• Manejo de errores robusto</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Validaciones</h4>
-                  <ul className="space-y-1 text-gray-600 ml-4">
-                    <li>• Formato válido de NIT</li>
-                    <li>• Rango de fechas coherente</li>
-                    <li>• Disponibilidad del servicio</li>
-                    <li>• Integridad de descarga</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Información técnica */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-purple-500" />
-              Información Técnica del Módulo F2X
-            </CardTitle>
+            </div>
+            <CardTitle className="text-2xl">Módulo Reubicado</CardTitle>
+            <CardDescription className="text-lg">
+              El módulo de Automatización F2X se ha movido a su nueva ubicación dentro del área de Contabilidad
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-              <div>
-                <h4 className="font-semibold mb-2">Tecnologías</h4>
-                <ul className="space-y-1 text-gray-600">
-                  <li>• Playwright WebDriver</li>
-                  <li>• TypeScript/Node.js</li>
-                  <li>• Next.js API Routes</li>
-                  <li>• Chromium Browser</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Formatos Soportados</h4>
-                <ul className="space-y-1 text-gray-600">
-                  <li>• Archivos Excel (.xlsx)</li>
-                  <li>• Datos CSV</li>
-                  <li>• Reportes PDF</li>
-                  <li>• Logs JSON</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Capacidades</h4>
-                <ul className="space-y-1 text-gray-600">
-                  <li>• Procesamiento automático</li>
-                  <li>• Selector de rango de fechas</li>
-                  <li>• Manejo de errores</li>
-                  <li>• Reintentos inteligentes</li>
-                  <li>• Capturas de pantalla</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Salidas</h4>
-                <ul className="space-y-1 text-gray-600">
-                  <li>• Archivo descargado</li>
-                  <li>• Log de actividades</li>
-                  <li>• Reporte de estado</li>
-                  <li>• Métricas de tiempo</li>
-                </ul>
-              </div>
+          <CardContent className="text-center space-y-6">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Nueva ubicación:</strong> Contabilidad → Automatización F2X
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                Serás redirigido automáticamente en 5 segundos...
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <Link href="/areas/contabilidad/automatizacion-f2x">
+                <Button size="lg" className="w-full">
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Ir al Módulo F2X
+                </Button>
+              </Link>
+              
+              <Link href="/areas/contabilidad">
+                <Button variant="outline" size="lg" className="w-full">
+                  Ver Área de Contabilidad
+                </Button>
+              </Link>
+              
+              <Link href="/">
+                <Button variant="ghost" size="lg" className="w-full">
+                  Volver al Inicio
+                </Button>
+              </Link>
+            </div>
+
+            <div className="text-sm text-muted-foreground">
+              <p>
+                Como parte de la nueva organización por áreas, todos los módulos relacionados con contabilidad 
+                se encuentran ahora agrupados en el área correspondiente para una mejor organización y navegación.
+              </p>
             </div>
           </CardContent>
         </Card>
