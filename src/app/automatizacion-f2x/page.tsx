@@ -28,13 +28,13 @@ export default function AutomatizacionF2XRedirect() {
             <div className="flex justify-center mb-4">
               <div className="p-3 bg-blue-100 rounded-full">
                 <Info className="h-8 w-8 text-blue-600" />
-              </div>
-            </div>
+          </div>
+        </div>
             <CardTitle className="text-2xl">Módulo Reubicado</CardTitle>
             <CardDescription className="text-lg">
               El módulo de Automatización F2X se ha movido a su nueva ubicación dentro del área de Contabilidad
-            </CardDescription>
-          </CardHeader>
+              </CardDescription>
+              </CardHeader>
           <CardContent className="text-center space-y-6">
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
@@ -43,8 +43,8 @@ export default function AutomatizacionF2XRedirect() {
               <p className="text-xs text-yellow-600 mt-1">
                 Serás redirigido automáticamente en 5 segundos...
               </p>
-            </div>
-            
+          </div>
+
             <div className="space-y-3">
               <Link href="/areas/contabilidad/automatizacion-f2x">
                 <Button size="lg" className="w-full">
@@ -64,7 +64,7 @@ export default function AutomatizacionF2XRedirect() {
                   Volver al Inicio
                 </Button>
               </Link>
-            </div>
+        </div>
 
             <div className="text-sm text-muted-foreground">
               <p>

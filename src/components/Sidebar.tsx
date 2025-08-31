@@ -20,8 +20,8 @@ import { useState } from "react"
 
 const staticNavigation = [
   {
-    name: "Inicio",
-    href: "/",
+    name: "Dashboard",
+    href: "/dashboard",
     icon: Home,
   },
 ]
@@ -224,24 +224,24 @@ export function Sidebar() {
               Administración
             </p>
             {adminNavigation.map((item) => {
-              const isActive = pathname === item.href
-              const Icon = item.icon
+            const isActive = pathname === item.href
+            const Icon = item.icon
 
-              return (
-                <Link key={item.name} href={item.href}>
-                  <Button
-                    variant={isActive ? "default" : "ghost"}
-                    className={cn(
-                      "w-full justify-start gap-2 text-left",
-                      isActive && "bg-primary text-primary-foreground"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.name}
-                  </Button>
-                </Link>
-              )
-            })}
+            return (
+              <Link key={item.name} href={item.href}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start gap-2 text-left",
+                    isActive && "bg-primary text-primary-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.name}
+                </Button>
+              </Link>
+            )
+          })}
           </div>
         </nav>
 
