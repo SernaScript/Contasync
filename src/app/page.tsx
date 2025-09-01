@@ -1,359 +1,447 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
+import Link from 'next/link'
 import { 
-  ArrowRight,
-  Shield,
-  Truck,
-  BarChart3, 
-  Users, 
-  MapPin,
+  FileText, 
+  Download, 
+  Bot, 
+  Zap, 
+  Shield, 
+  TrendingUp,
   CheckCircle,
-  Clock,
-  Globe,
-  Lock,
-  Package,
-  Route,
-  FileText,
-  DollarSign
-} from "lucide-react"
+  ArrowRight,
+  Star,
+  User,
+  Menu,
+  X
+} from 'lucide-react'
+import { useState, useEffect } from 'react'
 
-export default function LandingPage() {
+export default function HomePage() {
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      {/* Navbar */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg py-3' 
+          : 'bg-transparent py-6'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                <Truck className="w-5 h-5 text-white" />
-        </div>
-              <span className="text-xl font-bold text-gray-900">TYVG</span>
-        </div>
-            <div className="flex items-center gap-4">
-              <Link href="/login">
-                <Button variant="ghost">
-                  Iniciar Sesión
-                </Button>
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3">
+              <div className={`bg-blue-600 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                isScrolled ? 'w-8 h-8' : 'w-10 h-10'
+              }`}>
+                <FileText className={`text-white transition-all duration-300 ${
+                  isScrolled ? 'w-4 h-4' : 'w-5 h-5'
+                }`} />
+              </div>
+              <span className={`font-bold text-gray-900 transition-all duration-300 ${
+                isScrolled ? 'text-lg' : 'text-2xl'
+              }`}>
+                Contasync
+              </span>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-8">
+              <Link 
+                href="/services/invoice-automation" 
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Facturas
               </Link>
-              <Link href="/login">
-                <Button className="bg-orange-600 hover:bg-orange-700">
-                  Acceder al Portal
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <Link 
+                href="/services/dian-downloads" 
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                DIAN
+              </Link>
+              <Link 
+                href="/services/accounting-agent" 
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Agente IA
+              </Link>
+              <Link 
+                href="/contact" 
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Contacto
+              </Link>
+            </div>
+
+            {/* Auth Buttons */}
+            <div className="hidden md:flex items-center gap-4">
+              <Link 
+                href="/login" 
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Iniciar Sesión
+              </Link>
+              <Link 
+                href="/demo" 
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                Solicitar Demo
+              </Link>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-700" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-700" />
+              )}
+            </button>
+          </div>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden mt-4 pb-4 border-t border-gray-200">
+              <div className="flex flex-col gap-4 pt-4">
+                <Link 
+                  href="/services/invoice-automation" 
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Facturas
+                </Link>
+                <Link 
+                  href="/services/dian-downloads" 
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  DIAN
+                </Link>
+                <Link 
+                  href="/services/accounting-agent" 
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Agente IA
+                </Link>
+                <Link 
+                  href="/contact" 
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Contacto
+                </Link>
+                <div className="pt-4 border-t border-gray-200">
+                  <Link 
+                    href="/login" 
+                    className="block text-gray-700 hover:text-blue-600 font-medium transition-colors mb-3"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Iniciar Sesión
+                  </Link>
+                  <Link 
+                    href="/demo" 
+                    className="block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors text-center"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Solicitar Demo
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Spacer for fixed navbar */}
+      <div className="h-24"></div>
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <h1 className="text-5xl md:text-7xl font-bold mb-6">
+              Contasync
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+              Automatización inteligente para la gestión contable. 
+              Simplifica tu contabilidad con tecnología de vanguardia.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link 
+                href="/demo" 
+                className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors inline-flex items-center gap-2"
+              >
+                Solicitar Demo
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+              <Link 
+                href="/contact" 
+                className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition-colors"
+              >
+                Contactar
               </Link>
             </div>
           </div>
         </div>
-      </header>
+      </section>
 
-            {/* Hero Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4 text-center">
-          <Badge variant="secondary" className="mb-4 bg-orange-100 text-orange-800 border-orange-300">
-            <Truck className="w-4 h-4 mr-1" />
-            Plataforma de Transporte de Carga
-          </Badge>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Portal <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">TYVG</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Plataforma exclusiva para proveedores y terceros de TYVG. Gestiona tus pagos, certificaciones, 
-            registra tus viajes y consulta información de tus servicios de transporte de materiales.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
-              <Button size="lg" className="text-lg px-8 py-6 bg-orange-600 hover:bg-orange-700">
-                <Lock className="mr-2 h-5 w-5" />
-                Acceder al Portal
-                </Button>
+      {/* Services Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Nuestros Servicios
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Soluciones integrales para automatizar y optimizar tu proceso contable
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Invoice Automation */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100 hover:shadow-xl transition-all duration-300">
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Automatización de Facturas
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Procesamiento automático de facturas con reconocimiento inteligente de datos. 
+                Reduce errores y tiempo de procesamiento en un 80%.
+              </p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Extracción automática de datos
+                </li>
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Validación inteligente
+                </li>
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Integración con sistemas contables
+                </li>
+              </ul>
+              <Link 
+                href="/services/invoice-automation"
+                className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700"
+              >
+                Saber más <ArrowRight className="w-4 h-4" />
               </Link>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-6 border-orange-600 text-orange-600 hover:bg-orange-50">
-              <Users className="mr-2 h-5 w-5" />
-              Solicitar Registro
-            </Button>
+            </div>
+
+            {/* DIAN Downloads */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl border border-green-100 hover:shadow-xl transition-all duration-300">
+              <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mb-6">
+                <Download className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Descargas DIAN Automatizadas
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Descarga automática de certificados, constancias y documentos de la DIAN. 
+                Mantente al día sin esfuerzo manual.
+              </p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Descargas programadas
+                </li>
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Notificaciones automáticas
+                </li>
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Almacenamiento seguro
+                </li>
+              </ul>
+              <Link 
+                href="/services/dian-downloads"
+                className="inline-flex items-center gap-2 text-green-600 font-semibold hover:text-green-700"
+              >
+                Saber más <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Accounting Agent */}
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-2xl border border-purple-100 hover:shadow-xl transition-all duration-300">
+              <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mb-6">
+                <Bot className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Agente de Contabilización IA
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Asistente inteligente que automatiza la contabilización de transacciones. 
+                Aprende de tus patrones y mejora continuamente.
+              </p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Machine Learning avanzado
+                </li>
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Sugerencias inteligentes
+                </li>
+                <li className="flex items-center gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Aprendizaje continuo
+                </li>
+              </ul>
+              <Link 
+                href="/services/accounting-agent"
+                className="inline-flex items-center gap-2 text-purple-600 font-semibold hover:text-purple-700"
+              >
+                Saber más <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-            {/* Services Section */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
+      {/* Siigo Integration Section */}
+      <section className="py-20 bg-gradient-to-r from-indigo-50 to-blue-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Funcionalidades del Portal
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Integración con Siigo
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Herramientas para que nuestros proveedores y terceros gestionen eficientemente sus operaciones con TYVG
+              Conectamos directamente con tu sistema contable Siigo para una experiencia fluida
             </p>
           </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Gestión de Pagos */}
-            <Card className="border-orange-200 hover:border-orange-300 transition-colors group hover:shadow-lg">
-              <CardHeader>
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
-                  <DollarSign className="w-6 h-6 text-orange-600" />
+          <div className="bg-white rounded-2xl p-8 shadow-lg">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Sincronización Automática</h3>
                 </div>
-                <CardTitle className="text-orange-900">Gestión de Pagos</CardTitle>
-                <CardDescription>
-                  Consulta el estado de tus pagos, historial de liquidaciones y próximos desembolsos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-orange-500" />
-                    Estado de pagos
+                <p className="text-gray-600 mb-6">
+                  Todos los datos procesados se sincronizan automáticamente con Siigo, 
+                  eliminando la necesidad de ingresos manuales y reduciendo errores.
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <span className="text-gray-700">Sincronización en tiempo real</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-orange-500" />
-                    Historial de liquidaciones
+                  <li className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <span className="text-gray-700">Mapeo automático de cuentas</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-orange-500" />
-                    Próximos desembolsos
+                  <li className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <span className="text-gray-700">Validación antes de sincronizar</span>
                   </li>
                 </ul>
-              </CardContent>
-            </Card>
-
-            {/* Registro de Viajes */}
-            <Card className="border-blue-200 hover:border-blue-300 transition-colors group hover:shadow-lg">
-              <CardHeader>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-                  <Truck className="w-6 h-6 text-blue-600" />
-                </div>
-                <CardTitle className="text-blue-900">Registro de Viajes</CardTitle>
-                <CardDescription>
-                  Registra tus viajes realizados para el proceso de liquidación y pago
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                    Registro de servicios
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                    Carga de documentos
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                    Seguimiento de estado
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Certificaciones */}
-            <Card className="border-green-200 hover:border-green-300 transition-colors group hover:shadow-lg">
-              <CardHeader>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
-                  <FileText className="w-6 h-6 text-green-600" />
-                </div>
-                <CardTitle className="text-green-900">Certificaciones</CardTitle>
-                <CardDescription>
-                  Mantén actualizadas tus certificaciones RUNT, pólizas y documentación legal
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Certificados RUNT
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Pólizas de seguros
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Documentación vehicular
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Consulta de Información */}
-            <Card className="border-purple-200 hover:border-purple-300 transition-colors group hover:shadow-lg">
-              <CardHeader>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
-                  <BarChart3 className="w-6 h-6 text-purple-600" />
-                </div>
-                <CardTitle className="text-purple-900">Consulta de Información</CardTitle>
-                <CardDescription>
-                  Accede a reportes, historial de servicios y información adicional de tus operaciones
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-purple-500" />
-                    Historial de servicios
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-purple-500" />
-                    Reportes de actividad
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-purple-500" />
-                    Información contractual
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl p-8 text-center">
+                <div className="text-6xl font-bold text-blue-600 mb-4">100%</div>
+                <p className="text-xl text-blue-800 font-semibold">Integrado</p>
+                <p className="text-blue-600 mt-2">con Siigo</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Ventajas para Nuestros Proveedores
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              ¿Por qué elegir Contasync?
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Una plataforma diseñada para simplificar la gestión de tus servicios con TYVG
+            <p className="text-xl text-gray-600">
+              Beneficios que transformarán tu proceso contable
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <DollarSign className="w-8 h-8 text-orange-600" />
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Pagos Transparentes</h3>
-              <p className="text-gray-600">
-                Consulta en tiempo real el estado de tus pagos, historial de liquidaciones y próximos desembolsos
-              </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Eficiencia</h3>
+              <p className="text-gray-600">Reduce el tiempo de procesamiento en un 80%</p>
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FileText className="w-8 h-8 text-orange-600" />
+              <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Documentación Centralizada</h3>
-              <p className="text-gray-600">
-                Mantén actualizadas todas tus certificaciones y documentos legales en un solo lugar
-              </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Precisión</h3>
+              <p className="text-gray-600">Elimina errores humanos con IA avanzada</p>
             </div>
 
             <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Clock className="w-8 h-8 text-orange-600" />
+              <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Proceso Ágil</h3>
-              <p className="text-gray-600">
-                Registra tus viajes de forma rápida y sencilla para agilizar el proceso de liquidación
-              </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Velocidad</h3>
+              <p className="text-gray-600">Procesamiento en tiempo real</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Star className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Calidad</h3>
+              <p className="text-gray-600">Resultados consistentes y confiables</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-orange-600 mb-2">120+</div>
-              <div className="text-gray-600">Proveedores Registrados</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-orange-600 mb-2">2,500+</div>
-              <div className="text-gray-600">Viajes Procesados</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-orange-600 mb-2">98%</div>
-              <div className="text-gray-600">Pagos Puntuales</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-orange-600 mb-2">24/7</div>
-              <div className="text-gray-600">Soporte Disponible</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-            {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-orange-600 to-orange-700">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            ¿Eres proveedor de servicios de transporte?
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-bold mb-6">
+            ¿Listo para transformar tu contabilidad?
           </h2>
-          <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
-            Únete a nuestros proveedores registrados y gestiona tus pagos, certificaciones y servicios de forma eficiente
+          <p className="text-xl mb-8 text-blue-100">
+            Únete a cientos de empresas que ya automatizaron sus procesos contables con Contasync
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
-              <Button size="lg" variant="secondary" className="text-lg px-8 py-6">
-                <Lock className="mr-2 h-5 w-5" />
-                Acceder al Portal
-              </Button>
+            <Link 
+              href="/demo" 
+              className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors"
+            >
+              Solicitar Demo Gratuito
             </Link>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-white text-white hover:bg-white hover:text-orange-600">
-              <Users className="mr-2 h-5 w-5" />
-              Registrarse como Proveedor
-            </Button>
+            <Link 
+              href="/contact" 
+              className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition-colors"
+            >
+              Hablar con un Experto
+            </Link>
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">TYVG</span>
-              </div>
-              <p className="text-gray-400">
-                Portal especializado para proveedores y afiliados en el transporte de carga por carretera
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Servicios</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>Gestión de Pagos</li>
-                <li>Registro de Viajes</li>
-                <li>Certificaciones</li>
-                <li>Consulta de Información</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Soporte</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>Centro de Ayuda</li>
-                <li>Contacto Técnico</li>
-                <li>Capacitaciones</li>
-                <li>Estado del Sistema</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>Términos de Servicio</li>
-                <li>Política de Privacidad</li>
-                <li>Normativa RUNT</li>
-                <li>Certificaciones</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 TYVG - Portal de Transporte de Carga. Todos los derechos reservados.</p>
-          </div>
-        </div>
-      </footer>
-      </div>
+    </div>
   )
 }
