@@ -1,6 +1,7 @@
 // Prisma seed script for initial data
 
-import { PrismaClient, RoleName, PermissionAction } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
+import { RoleName, PermissionAction } from '../src/types/auth'
 import { hashPassword } from '../src/lib/auth'
 
 const prisma = new PrismaClient()

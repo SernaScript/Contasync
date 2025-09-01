@@ -2,11 +2,12 @@
 
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { 
-  getTokenFromRequest, 
-  verifyToken 
-} from '@/lib/auth'
-import { PermissionAction, RoleName } from '@/types/auth'
+import { jwtVerify } from 'jose'
+
+// JWT Configuration
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
+)
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = [
@@ -17,12 +18,12 @@ const PUBLIC_ROUTES = [
 ]
 
 // Routes that require specific permissions
-const PROTECTED_ROUTES: Record<string, { resource: string; action: PermissionAction }> = {
-  '/dashboard': { resource: 'dashboard', action: PermissionAction.VIEW },
-  '/settings': { resource: 'settings', action: PermissionAction.VIEW },
-  '/users': { resource: 'users', action: PermissionAction.VIEW },
-  '/reports': { resource: 'reports', action: PermissionAction.VIEW },
-  '/database': { resource: 'database', action: PermissionAction.VIEW },
+const PROTECTED_ROUTES: Record<string, { resource: string; action: string }> = {
+  '/dashboard': { resource: 'dashboard', action: 'VIEW' },
+  '/settings': { resource: 'settings', action: 'VIEW' },
+  '/users': { resource: 'users', action: 'VIEW' },
+  '/reports': { resource: 'reports', action: 'VIEW' },
+  '/database': { resource: 'database', action: 'VIEW' },
 }
 
 // Area-specific route patterns
@@ -51,6 +52,29 @@ const ADMIN_ROUTES = [
 const SUPER_ADMIN_ROUTES = [
   '/settings/system'
 ]
+
+// JWT utilities for middleware (no Prisma dependency)
+const getTokenFromRequest = (request: NextRequest): string | null => {
+  // Try to get token from Authorization header
+  const authHeader = request.headers.get('authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7)
+  }
+
+  // Try to get token from cookie
+  const tokenCookie = request.cookies.get('auth-token')
+  return tokenCookie?.value || null
+}
+
+const verifyToken = async (token: string): Promise<{ userId: string } | null> => {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+    return { userId: payload.userId as string }
+  } catch (error) {
+    console.error('Token verification failed:', error)
+    return null
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
