@@ -9,17 +9,21 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { 
-  Truck,
+  FileText,
   Lock,
   Mail,
   Eye,
   EyeOff,
   ArrowLeft,
+  Zap,
+  Bot,
+  Download,
+  CheckCircle,
   Shield,
-  Clock,
+  TrendingUp,
   BarChart3,
-  Route,
-  Package
+  Calculator,
+  Database
 } from "lucide-react"
 
 export default function LoginPage() {
@@ -73,19 +77,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
+          <Link href="/" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Volver al inicio
           </Link>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-              <Truck className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">TYVG</span>
+            <span className="text-xl font-bold text-gray-900">Contasync</span>
           </div>
         </div>
 
@@ -94,14 +98,14 @@ export default function LoginPage() {
           <div className="max-w-md mx-auto w-full">
             <Card className="shadow-xl border-0">
               <CardHeader className="text-center pb-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Lock className="w-8 h-8 text-white" />
                 </div>
                 <CardTitle className="text-2xl font-bold text-gray-900">
-                  Acceso al Portal
+                  Acceso a Contasync
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                  Ingresa como proveedor o afiliado de obras
+                  Ingresa a tu panel de automatización contable
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -116,7 +120,7 @@ export default function LoginPage() {
                         id="email"
                         name="email"
                         type="email"
-                        placeholder="proveedor@transportes.com"
+                        placeholder="usuario@empresa.com"
                         value={formData.email}
                         onChange={handleInputChange}
                         className="pl-10 h-12"
@@ -170,25 +174,25 @@ export default function LoginPage() {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 text-lg font-medium bg-orange-600 hover:bg-orange-700"
+                    className="w-full h-12 text-lg font-medium bg-blue-600 hover:bg-blue-700"
                     disabled={isLoading}
                   >
                     {isLoading ? (
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Accediendo al portal...
+                        Accediendo...
                       </div>
                     ) : (
-                      "Acceder al Portal"
+                      "Acceder a Contasync"
                     )}
                   </Button>
                 </form>
 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-center text-sm text-gray-600">
-                    ¿No estás registrado como proveedor?{" "}
-                    <Link href="/contact" className="text-orange-600 hover:text-orange-800 font-medium">
-                      Solicita tu registro
+                    ¿No tienes una cuenta?{" "}
+                    <Link href="/demo" className="text-blue-600 hover:text-blue-800 font-medium">
+                      Solicita una demo gratuita
                     </Link>
                   </p>
                 </div>
@@ -196,15 +200,15 @@ export default function LoginPage() {
             </Card>
 
             {/* Demo Credentials */}
-            <Card className="mt-6 bg-orange-50 border-orange-200">
+            <Card className="mt-6 bg-blue-50 border-blue-200">
               <CardContent className="p-4">
-                <h4 className="font-semibold text-orange-900 mb-2">Credenciales de Demostración</h4>
-                <div className="space-y-1 text-sm text-orange-800">
-                  <p><strong>Email:</strong> proveedor@demo.com</p>
+                <h4 className="font-semibold text-blue-900 mb-2">Credenciales de Demostración</h4>
+                <div className="space-y-1 text-sm text-blue-800">
+                  <p><strong>Email:</strong> demo@contasync.com</p>
                   <p><strong>Contraseña:</strong> demo123</p>
                 </div>
-                <p className="text-xs text-orange-600 mt-2">
-                  Usa estas credenciales para explorar el portal
+                <p className="text-xs text-blue-600 mt-2">
+                  Usa estas credenciales para explorar la plataforma
                 </p>
               </CardContent>
             </Card>
@@ -213,64 +217,93 @@ export default function LoginPage() {
           {/* Right Side - Features */}
           <div className="space-y-8">
             <div>
-              <Badge variant="secondary" className="mb-4 bg-orange-100 text-orange-800 border-orange-300">
-                <Truck className="w-4 h-4 mr-1" />
-                Portal de Transporte
+              <Badge variant="secondary" className="mb-4 bg-blue-100 text-blue-800 border-blue-300">
+                <FileText className="w-4 h-4 mr-1" />
+                Automatización Contable
               </Badge>
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                Bienvenido de vuelta
+                Bienvenido a Contasync
               </h1>
               <p className="text-xl text-gray-600">
-                Accede a tu portal especializado para la gestión de operaciones de transporte de carga por carretera
+                Accede a tu panel de automatización inteligente para la gestión contable. 
+                Simplifica tu contabilidad con tecnología de vanguardia.
               </p>
             </div>
 
             <div className="space-y-6">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Route className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Gestión de Rutas</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Automatización de Facturas</h3>
                   <p className="text-gray-600">
-                    Optimiza tus rutas de transporte y reduce costos operativos con nuestro sistema inteligente
+                    Procesamiento automático con IA avanzada. Reduce errores y tiempo en un 80%.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Package className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Download className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Control de Carga</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Descargas DIAN Automatizadas</h3>
                   <p className="text-gray-600">
-                    Seguimiento en tiempo real de tu carga y documentación digital completa
+                    Descarga automática de certificados y documentos de la DIAN sin esfuerzo manual.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <BarChart3 className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Reportes Operacionales</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Agente de Contabilización IA</h3>
                   <p className="text-gray-600">
-                    Análisis detallados de rendimiento, costos y eficiencia de tu flota
+                    Asistente inteligente que aprende de tus patrones y mejora continuamente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-6 h-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Integración con Siigo</h3>
+                  <p className="text-gray-600">
+                    Sincronización automática y bidireccional con tu sistema contable Siigo.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-2xl p-6 text-white">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
               <h3 className="font-bold text-xl mb-2">¿Necesitas ayuda?</h3>
-              <p className="text-orange-100 mb-4">
-                Nuestro equipo especializado está disponible para apoyarte en tus operaciones
+              <p className="text-blue-100 mb-4">
+                Nuestro equipo especializado en automatización contable está disponible para apoyarte
               </p>
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" className="bg-white text-blue-600 hover:bg-blue-50">
                 Contactar Soporte
               </Button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">80%</div>
+                <div className="text-sm text-gray-600">Menos tiempo</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">99%</div>
+                <div className="text-sm text-gray-600">Precisión</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">24/7</div>
+                <div className="text-sm text-gray-600">Disponible</div>
+              </div>
             </div>
           </div>
         </div>
