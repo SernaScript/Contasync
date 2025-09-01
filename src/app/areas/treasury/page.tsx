@@ -1,14 +1,14 @@
 "use client"
 
-import { AreaLayout } from "@/components/areas/AreaLayout"
-import { AreaModules } from "@/components/areas/AreasNavigation"
+import { AreaLayout } from "@/components/layout/AreaLayout"
+import { AreaModules } from "@/components/navigation/AreasNavigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PiggyBank, TrendingUp, Users, Calendar } from "lucide-react"
 
-export default function TesoreriaPage() {
+export default function TreasuryPage() {
   return (
-    <AreaLayout areaId="tesoreria">
+    <AreaLayout areaId="treasury">
       <div className="space-y-6">
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -82,7 +82,7 @@ export default function TesoreriaPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AreaModules areaId="tesoreria" />
+            <AreaModules areaId="treasury" />
           </CardContent>
         </Card>
 

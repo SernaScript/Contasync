@@ -1,13 +1,13 @@
 "use client"
 
-import { AreaLayout } from "@/components/areas/AreaLayout"
+import { AreaLayout } from "@/components/layout/AreaLayout"
 import { LoginForm } from "@/components/LoginForm"
 import { ScrapingStatus } from "@/components/ScrapingStatus"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileText, Clock, CheckCircle, AlertCircle, Zap, Shield, Database, Download } from "lucide-react"
 
-export default function AutomatizacionF2XPage() {
+export default function F2XAutomationPage() {
   const handleFormSubmit = (data: any) => {
     console.log('Datos del formulario F2X:', data)
   }
@@ -19,8 +19,8 @@ export default function AutomatizacionF2XPage() {
 
   return (
     <AreaLayout 
-      areaId="contabilidad" 
-      moduleId="automatizacion-f2x"
+      areaId="accounting" 
+      moduleId="f2x-automation"
       actions={
         <Button variant="outline" size="sm">
           <Download className="mr-2 h-4 w-4" />

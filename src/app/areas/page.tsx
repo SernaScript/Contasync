@@ -1,7 +1,7 @@
 "use client"
 
 import { MainLayout } from "@/components/MainLayout"
-import { AreasNavigation } from "@/components/areas/AreasNavigation"
+import { AreasNavigation } from "@/components/navigation/AreasNavigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function AreasPage() {

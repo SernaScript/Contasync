@@ -1,14 +1,14 @@
 "use client"
 
-import { AreaLayout } from "@/components/areas/AreaLayout"
-import { AreaModules } from "@/components/areas/AreasNavigation"
+import { AreaLayout } from "@/components/layout/AreaLayout"
+import { AreaModules } from "@/components/navigation/AreasNavigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Users, Receipt, TrendingUp, DollarSign } from "lucide-react"
 
-export default function FacturacionPage() {
+export default function BillingPage() {
   return (
-    <AreaLayout areaId="facturacion">
+    <AreaLayout areaId="billing">
       <div className="space-y-6">
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -82,7 +82,7 @@ export default function FacturacionPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AreaModules areaId="facturacion" />
+            <AreaModules areaId="billing" />
           </CardContent>
         </Card>
 

@@ -3,7 +3,7 @@
 import { MainLayout } from "@/components/MainLayout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { AreasNavigation } from "@/components/areas/AreasNavigation"
+import { AreasNavigation } from "@/components/navigation/AreasNavigation"
 import Link from "next/link"
 import { 
   Zap,
@@ -112,19 +112,19 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
-            <Link href="/areas/contabilidad/automatizacion-f2x">
+            <Link href="/areas/accounting/automatizacion-f2x">
               <Button size="lg">
                 <Zap className="mr-2 h-4 w-4" />
                 Automatización F2X
               </Button>
             </Link>
-            <Link href="/areas/contabilidad">
+            <Link href="/areas/accounting">
               <Button variant="outline" size="lg">
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Contabilidad
               </Button>
             </Link>
-            <Link href="/areas/tesoreria">
+            <Link href="/areas/treasury">
               <Button variant="outline" size="lg">
                 <Shield className="mr-2 h-4 w-4" />
                 Tesorería

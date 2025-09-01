@@ -14,7 +14,7 @@ export default function AutomatizacionF2XRedirect() {
   useEffect(() => {
     // Redirect after 5 seconds
     const timer = setTimeout(() => {
-      router.push("/areas/contabilidad/automatizacion-f2x")
+      router.push("/areas/accounting/automatizacion-f2x")
     }, 5000)
 
     return () => clearTimeout(timer)
@@ -46,14 +46,14 @@ export default function AutomatizacionF2XRedirect() {
           </div>
 
             <div className="space-y-3">
-              <Link href="/areas/contabilidad/automatizacion-f2x">
+              <Link href="/areas/accounting/automatizacion-f2x">
                 <Button size="lg" className="w-full">
                   <ArrowRight className="mr-2 h-4 w-4" />
                   Ir al Módulo F2X
                 </Button>
               </Link>
               
-              <Link href="/areas/contabilidad">
+              <Link href="/areas/accounting">
                 <Button variant="outline" size="lg" className="w-full">
                   Ver Área de Contabilidad
                 </Button>

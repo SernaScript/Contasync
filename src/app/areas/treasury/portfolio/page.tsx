@@ -1,6 +1,6 @@
 "use client"
 
-import { AreaLayout } from "@/components/areas/AreaLayout"
+import { AreaLayout } from "@/components/layout/AreaLayout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,7 @@ import { MetricsGrid } from "@/components/shared/MetricsCard"
 import { ActivityFeed } from "@/components/shared/ActivityFeed"
 import { Users, DollarSign, AlertTriangle, TrendingUp, Calendar, Filter } from "lucide-react"
 
-export default function CarteraPage() {
+export default function PortfolioPage() {
   const metrics = [
     {
       title: "Cartera Total",
@@ -66,8 +66,8 @@ export default function CarteraPage() {
 
   return (
     <AreaLayout 
-      areaId="tesoreria" 
-      moduleId="cartera"
+      areaId="treasury" 
+      moduleId="portfolio"
       actions={
         <div className="flex gap-2">
           <Button variant="outline" size="sm">

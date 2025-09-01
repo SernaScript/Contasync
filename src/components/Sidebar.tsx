@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { areasConfig } from "@/lib/areas-config"
+import { AREAS_CONFIG, getAreaColorClasses, getModuleStatusBadgeClasses, getModuleStatusDisplayName, ModuleStatus } from "@/config/areas"
 import { 
   Home, 
   Settings, 
@@ -69,33 +69,7 @@ export function Sidebar() {
     return pathname === moduleHref
   }
 
-  const getAreaColorClass = (color: string) => {
-    const colorMap = {
-      blue: 'text-blue-600',
-      green: 'text-green-600',
-      orange: 'text-orange-600',
-      purple: 'text-purple-600'
-    }
-    return colorMap[color as keyof typeof colorMap] || colorMap.blue
-  }
 
-  const getStatusBadge = (status?: string) => {
-    if (!status || status === 'active') return null
-    
-    const statusConfig = {
-      development: { label: 'Dev', className: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-      planned: { label: 'Plan', className: 'bg-gray-100 text-gray-700 border-gray-300' }
-    }
-    
-    const config = statusConfig[status as keyof typeof statusConfig]
-    if (!config) return null
-
-    return (
-      <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 ml-auto", config.className)}>
-        {config.label}
-      </Badge>
-    )
-  }
 
   return (
     <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen fixed left-0 top-0 z-40">
@@ -144,7 +118,7 @@ export function Sidebar() {
               Áreas de Negocio
             </p>
             
-            {areasConfig.map((area) => {
+            {AREAS_CONFIG.map((area) => {
               const AreaIcon = area.icon
               const isExpanded = expandedAreas.includes(area.id)
               const isActive = isAreaActive(area.id)
@@ -161,7 +135,7 @@ export function Sidebar() {
                           isActive && "bg-primary text-primary-foreground"
                         )}
                       >
-                        <AreaIcon className={cn("h-4 w-4", !isActive && getAreaColorClass(area.color))} />
+                        <AreaIcon className={cn("h-4 w-4", !isActive && getAreaColorClasses(area.color).text)} />
                         <span className="flex-1 truncate">{area.name}</span>
                       </Button>
                     </Link>
@@ -192,16 +166,23 @@ export function Sidebar() {
                             <Button
                               variant={isModActive ? "default" : "ghost"}
                               size="sm"
-                              disabled={module.status === 'planned'}
+                              disabled={module.status === ModuleStatus.PLANNED}
                               className={cn(
                                 "w-full justify-start gap-2 text-left text-sm h-8",
                                 isModActive && "bg-primary text-primary-foreground",
-                                module.status === 'planned' && "opacity-50 cursor-not-allowed"
+                                module.status === ModuleStatus.PLANNED && "opacity-50 cursor-not-allowed"
                               )}
                             >
                               <ModuleIcon className="h-3 w-3" />
                               <span className="flex-1 truncate">{module.name}</span>
-                              {getStatusBadge(module.status)}
+                              {module.status && module.status !== ModuleStatus.ACTIVE && (
+                                <Badge 
+                                  variant="secondary" 
+                                  className={cn("ml-auto text-xs px-1.5 py-0.5", getModuleStatusBadgeClasses(module.status))}
+                                >
+                                  {module.status === ModuleStatus.DEVELOPMENT ? 'Dev' : 'Plan'}
+                                </Badge>
+                              )}
                             </Button>
                           </Link>
                         )

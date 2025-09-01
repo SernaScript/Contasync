@@ -1,6 +1,6 @@
 "use client"
 
-import { AreaLayout } from "@/components/areas/AreaLayout"
+import { AreaLayout } from "@/components/layout/AreaLayout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,7 @@ import { MetricsGrid } from "@/components/shared/MetricsCard"
 import { ActivityFeed } from "@/components/shared/ActivityFeed"
 import { Building2, TrendingUp, AlertCircle, CheckCircle, Clock, Settings } from "lucide-react"
 
-export default function ConciliacionPage() {
+export default function ReconciliationPage() {
   const metrics = [
     {
       title: "Cuentas Conciliadas",
@@ -66,8 +66,8 @@ export default function ConciliacionPage() {
 
   return (
     <AreaLayout 
-      areaId="contabilidad" 
-      moduleId="conciliacion"
+      areaId="accounting" 
+      moduleId="reconciliation"
       actions={
         <Button variant="outline" size="sm">
           <Settings className="mr-2 h-4 w-4" />

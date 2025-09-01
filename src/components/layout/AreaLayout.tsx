@@ -8,7 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Home } from "lucide-react"
-import { getAreaById, getModuleById, areasConfig } from "@/lib/areas-config"
+import { 
+  getAreaById, 
+  getModuleById, 
+  AREAS_CONFIG,
+  getAreaColorClasses,
+  getModuleStatusDisplayName,
+  getModuleStatusBadgeClasses,
+  ModuleStatus
+} from "@/config/areas"
 import { cn } from "@/lib/utils"
 
 interface AreaLayoutProps {
@@ -59,42 +67,7 @@ export function AreaLayout({
 
   const AreaIcon = area.icon
   const ModuleIcon = module?.icon
-
-  const getAreaColorClass = (color: string) => {
-    const colorMap = {
-      blue: 'text-blue-600 bg-blue-50 border-blue-200',
-      green: 'text-green-600 bg-green-50 border-green-200',
-      orange: 'text-orange-600 bg-orange-50 border-orange-200',
-      purple: 'text-purple-600 bg-purple-50 border-purple-200'
-    }
-    return colorMap[color as keyof typeof colorMap] || colorMap.blue
-  }
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-300'
-      case 'development':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
-      case 'planned':
-        return 'bg-gray-100 text-gray-800 border-gray-300'
-      default:
-        return 'bg-blue-100 text-blue-800 border-blue-300'
-    }
-  }
-
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case 'active':
-        return 'Activo'
-      case 'development':
-        return 'En Desarrollo'
-      case 'planned':
-        return 'Planificado'
-      default:
-        return 'Disponible'
-    }
-  }
+  const colorClasses = getAreaColorClasses(area.color)
 
   return (
     <div className={cn("min-h-screen bg-gray-50/50", className)}>
@@ -102,37 +75,21 @@ export function AreaLayout({
       <div className="border-b bg-white">
         <div className="container mx-auto px-4 py-4">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Inicio
-            </Link>
-            <span>/</span>
-            <Link 
-              href={`/areas/${area.id}`} 
-              className="hover:text-foreground transition-colors"
-            >
-              {area.name}
-            </Link>
-            {module && (
-              <>
-                <span>/</span>
-                <span className="text-foreground font-medium">{module.name}</span>
-              </>
-            )}
-          </div>
+          <AreaBreadcrumb area={area} module={module} />
 
           {/* Header Content */}
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
-              {/* Area Icon */}
+              {/* Area/Module Icon */}
               <div className={cn(
                 "p-3 rounded-xl border-2",
-                getAreaColorClass(area.color)
+                colorClasses.background,
+                colorClasses.border.split(' ')[0]
               )}>
                 {ModuleIcon ? (
-                  <ModuleIcon className="h-8 w-8" />
+                  <ModuleIcon className={cn("h-8 w-8", colorClasses.text)} />
                 ) : (
-                  <AreaIcon className="h-8 w-8" />
+                  <AreaIcon className={cn("h-8 w-8", colorClasses.text)} />
                 )}
               </div>
 
@@ -145,9 +102,9 @@ export function AreaLayout({
                   {module?.status && (
                     <Badge 
                       variant="outline" 
-                      className={getStatusColor(module.status)}
+                      className={getModuleStatusBadgeClasses(module.status)}
                     >
-                      {getStatusText(module.status)}
+                      {getModuleStatusDisplayName(module.status)}
                     </Badge>
                   )}
                 </div>
@@ -160,10 +117,10 @@ export function AreaLayout({
             {/* Actions */}
             <div className="flex items-center gap-2">
               {actions}
-              <Link href={module ? `/areas/${area.id}` : "/"}>
+              <Link href={module ? `/areas/${area.id}` : "/dashboard"}>
                 <Button variant="outline" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  {module ? `Volver a ${area.name}` : "Volver al inicio"}
+                  {module ? `Volver a ${area.name}` : "Volver al Dashboard"}
                 </Button>
               </Link>
             </div>
@@ -176,48 +133,7 @@ export function AreaLayout({
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-6">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <AreaIcon className="h-5 w-5" />
-                  {area.name}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  Módulos disponibles
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <nav className="space-y-1">
-                  {area.modules.map((mod) => {
-                    const ModIcon = mod.icon
-                    const isActive = pathname === mod.href
-                    
-                    return (
-                      <Link key={mod.id} href={mod.href}>
-                        <div className={cn(
-                          "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                          isActive 
-                            ? "bg-primary text-primary-foreground" 
-                            : "hover:bg-muted text-muted-foreground hover:text-foreground",
-                          mod.status === 'planned' && "opacity-50 cursor-not-allowed"
-                        )}>
-                          <ModIcon className="h-4 w-4 flex-shrink-0" />
-                          <span className="truncate">{mod.name}</span>
-                          {mod.status && mod.status !== 'active' && (
-                            <Badge 
-                              variant="secondary" 
-                              className="ml-auto text-xs px-1.5 py-0.5"
-                            >
-                              {mod.status === 'development' ? 'Dev' : 'Plan'}
-                            </Badge>
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </nav>
-              </CardContent>
-            </Card>
+            <AreaSidebar area={area} currentPath={pathname} />
           </div>
 
           {/* Main Content */}
@@ -230,7 +146,90 @@ export function AreaLayout({
   )
 }
 
-// Breadcrumb component reutilizable
+// Separate components for better organization
+interface AreaBreadcrumbProps {
+  area: any
+  module?: any
+}
+
+function AreaBreadcrumb({ area, module }: AreaBreadcrumbProps) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+      <Link href="/dashboard" className="hover:text-foreground transition-colors">
+        Dashboard
+      </Link>
+      <span>/</span>
+      <Link 
+        href={`/areas/${area.id}`} 
+        className="hover:text-foreground transition-colors"
+      >
+        {area.name}
+      </Link>
+      {module && (
+        <>
+          <span>/</span>
+          <span className="text-foreground font-medium">{module.name}</span>
+        </>
+      )}
+    </div>
+  )
+}
+
+interface AreaSidebarProps {
+  area: any
+  currentPath: string
+}
+
+function AreaSidebar({ area, currentPath }: AreaSidebarProps) {
+  const AreaIcon = area.icon
+  
+  return (
+    <Card className="sticky top-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <AreaIcon className="h-5 w-5" />
+          {area.name}
+        </CardTitle>
+        <CardDescription className="text-sm">
+          Módulos disponibles
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <nav className="space-y-1">
+          {area.modules.map((moduleItem: any) => {
+            const ModIcon = moduleItem.icon
+            const isActive = currentPath === moduleItem.href
+            
+            return (
+              <Link key={moduleItem.id} href={moduleItem.href}>
+                <div className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-muted text-muted-foreground hover:text-foreground",
+                  moduleItem.status === ModuleStatus.PLANNED && "opacity-50 cursor-not-allowed"
+                )}>
+                  <ModIcon className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{moduleItem.name}</span>
+                  {moduleItem.status && moduleItem.status !== ModuleStatus.ACTIVE && (
+                    <Badge 
+                      variant="secondary" 
+                      className="ml-auto text-xs px-1.5 py-0.5"
+                    >
+                      {moduleItem.status === ModuleStatus.DEVELOPMENT ? 'Dev' : 'Plan'}
+                    </Badge>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </nav>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Reusable breadcrumb component
 interface BreadcrumbProps {
   items: Array<{
     label: string
