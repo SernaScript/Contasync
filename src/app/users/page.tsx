@@ -1,38 +1,41 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react"
 import { MainLayout } from "@/components/MainLayout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LoadingButton } from "@/components/ui/loading"
+import { LoadingOverlay } from "@/components/ui/loading"
+import { Skeleton, TableSkeleton } from "@/components/ui/loading"
+import { useApiLoading } from "@/hooks/useLoading"
 import { 
-  Users, 
-  UserPlus, 
-  Edit, 
-  Trash2, 
   Search, 
+  Users, 
   Filter,
-  Shield,
+  Plus,
+  Edit,
+  Trash2,
   Eye,
-  EyeOff
+  CheckCircle,
+  XCircle,
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 
 interface User {
   id: string;
   email: string;
-  name: string | null;
+  name: string;
+  role: {
+    name: string;
+    permissions: string[];
+  };
   isActive: boolean;
   lastLogin: Date | null;
   createdAt: Date;
-  updatedAt: Date;
-  role: {
-    id: string;
-    name: string;
-    displayName: string;
-    description: string | null;
-  };
 }
 
 interface UsersResponse {
@@ -42,24 +45,32 @@ interface UsersResponse {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [showInactive, setShowInactive] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const { isLoading, apiCall } = useApiLoading({
+    initialLoading: true,
+    loadingText: 'Cargando usuarios...'
+  });
 
   const loadUsers = async () => {
-    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (roleFilter) params.append('role', roleFilter);
       if (!showInactive) params.append('active', 'true');
+      params.append('page', currentPage.toString());
+      params.append('limit', '20');
 
       const response = await fetch(`/api/users?${params.toString()}`);
       const result = await response.json();
 
       if (result.success) {
         setUsers(result.data.users);
+        setTotalPages(Math.ceil(result.data.totalCount / 20));
       } else {
         console.error('Error cargando usuarios:', result.error);
         alert('Error cargando usuarios: ' + result.error);
@@ -67,22 +78,28 @@ export default function UsersPage() {
     } catch (error) {
       console.error('Error:', error);
       alert('Error de conexión');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleSearch = () => {
+    setCurrentPage(1);
     loadUsers();
   };
 
   const handleRoleFilterChange = (role: string) => {
     setRoleFilter(role);
+    setCurrentPage(1);
     loadUsers();
   };
 
   const toggleInactiveUsers = () => {
     setShowInactive(!showInactive);
+    setCurrentPage(1);
+    loadUsers();
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
     loadUsers();
   };
 
@@ -101,188 +118,213 @@ export default function UsersPage() {
 
   const formatDate = (date: Date | null) => {
     if (!date) return 'Nunca';
-    return new Date(date).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return new Date(date).toLocaleDateString();
   };
 
-  // Cargar usuarios al montar el componente
+  const getStatusIcon = (isActive: boolean) => {
+    if (isActive) {
+      return <CheckCircle className="h-4 w-4 text-green-600" />;
+    }
+    return <XCircle className="h-4 w-4 text-red-600" />;
+  };
+
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [currentPage]);
 
   return (
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-2">
-          <Users className="h-8 w-8 text-blue-500" />
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Gestión de Usuarios
             </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Administra todos los usuarios del sistema y sus roles
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Administra usuarios, roles y permisos del sistema
             </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Total Usuarios</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {users.length}
+              </p>
+            </div>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Nuevo Usuario
+            </Button>
           </div>
         </div>
 
-        {/* Filtros y búsqueda */}
+        {/* Filtros */}
         <Card>
           <CardHeader>
-            <CardTitle>Filtros y Búsqueda</CardTitle>
-            <CardDescription>
-              Buscar y filtrar usuarios por diferentes criterios
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtros de Búsqueda
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="search">Buscar por nombre o email</Label>
+                <Label htmlFor="search">Buscar Usuario</Label>
                 <Input
                   id="search"
+                  placeholder="Nombre o email"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar usuarios..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 />
               </div>
               <div>
-                <Label htmlFor="roleFilter">Filtrar por rol</Label>
+                <Label htmlFor="role">Filtrar por Rol</Label>
                 <select
-                  id="roleFilter"
-                  title="Seleccionar rol para filtrar"
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  id="role"
+                  className="w-full h-9 px-3 py-2 border border-input rounded-md bg-background text-sm"
                   value={roleFilter}
-                  onChange={(e) => handleRoleFilterChange(e.target.value)}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  aria-label="Seleccionar rol de usuario"
                 >
                   <option value="">Todos los roles</option>
-                  <option value="SUPER_ADMIN">Super Administrador</option>
-                  <option value="ADMIN">Administrador</option>
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="ADMIN">Admin</option>
                   <option value="ACCOUNTING">Contabilidad</option>
                   <option value="TREASURY">Tesorería</option>
                   <option value="LOGISTICS">Logística</option>
                   <option value="BILLING">Facturación</option>
-                  <option value="VIEWER">Solo Lectura</option>
+                  <option value="VIEWER">Visualizador</option>
                 </select>
               </div>
               <div className="flex items-end">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={toggleInactiveUsers}
                   className="w-full"
                 >
-                  {showInactive ? (
-                    <>
-                      <EyeOff className="h-4 w-4 mr-2" />
-                      Ocultar Inactivos
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Mostrar Inactivos
-                    </>
-                  )}
+                  {showInactive ? 'Ocultar Inactivos' : 'Mostrar Inactivos'}
                 </Button>
               </div>
               <div className="flex items-end">
-                <Button onClick={handleSearch} disabled={loading} className="w-full">
-                  {loading ? 'Buscando...' : 'Buscar'}
+                <Button onClick={handleSearch} className="w-full flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Buscar
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Botón de crear usuario */}
-        <div className="flex justify-end">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Crear Nuevo Usuario
-          </Button>
-        </div>
-
-        {/* Tabla de usuarios */}
+        {/* Tabla de Usuarios */}
         <Card>
           <CardHeader>
-            <CardTitle>Usuarios del Sistema</CardTitle>
-            <CardDescription>
-              {users.length} usuarios encontrados
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Usuarios del Sistema
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Cargando usuarios...</p>
-              </div>
-            ) : users.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No se encontraron usuarios</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium">Usuario</th>
-                      <th className="text-left py-3 px-4 font-medium">Rol</th>
-                      <th className="text-left py-3 px-4 font-medium">Estado</th>
-                      <th className="text-left py-3 px-4 font-medium">Último Acceso</th>
-                      <th className="text-left py-3 px-4 font-medium">Creado</th>
-                      <th className="text-left py-3 px-4 font-medium">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="font-medium text-gray-900">{user.name || 'Sin nombre'}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge className={getRoleColor(user.role.name)}>
-                            <Shield className="h-3 w-3 mr-1" />
-                            {user.role.displayName}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">
-                          {formatDate(user.lastLogin)}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">
-                          {formatDate(user.createdAt)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
+            <LoadingOverlay 
+              isLoading={isLoading} 
+              text="Cargando usuarios..."
+              spinnerSize="lg"
+            >
+              {users.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium">Usuario</th>
+                        <th className="text-left p-3 font-medium">Rol</th>
+                        <th className="text-left p-3 font-medium">Estado</th>
+                        <th className="text-left p-3 font-medium">Último Acceso</th>
+                        <th className="text-left p-3 font-medium">Fecha Creación</th>
+                        <th className="text-left p-3 font-medium">Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="p-3">
+                            <div>
+                              <p className="font-medium">{user.name}</p>
+                              <p className="text-sm text-gray-500">{user.email}</p>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role.name)}`}>
+                              {user.role.name}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(user.isActive)}
+                              <span className={user.isActive ? 'text-green-600' : 'text-red-600'}>
+                                {user.isActive ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm text-gray-600">
+                            {formatDate(user.lastLogin)}
+                          </td>
+                          <td className="p-3 text-sm text-gray-600">
+                            {formatDate(user.createdAt)}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <TableSkeleton rows={10} columns={6} />
+              )}
+            </LoadingOverlay>
+
+            {/* Paginación */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Página {currentPage} de {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
     </MainLayout>
-  )
+  );
 }

@@ -1,13 +1,22 @@
 "use client"
 
 import { useState } from "react"
+import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { format, subDays } from "date-fns"
-import { es } from "date-fns/locale"
-import { Loader2, CheckCircle, AlertCircle, Calendar } from "lucide-react"
+import { LoadingButton } from "@/components/ui/loading"
+import { Checkbox } from "@/components/ui/checkbox"
+import { 
+  CheckCircle, 
+  AlertCircle, 
+  Building2, 
+  Lock, 
+  Calendar,
+  Download,
+  Database
+} from "lucide-react"
 
 interface FormData {
   nit: string
@@ -15,22 +24,27 @@ interface FormData {
   processToDatabase: boolean
 }
 
+interface ScrapingResult {
+  success: boolean
+  message: string
+  error?: string
+  data?: {
+    nit: string
+    dateRange: string
+    downloadTime: string
+  }
+}
+
 interface LoginFormProps {
   onSubmit?: (data: FormData) => void
   title?: string
 }
 
-interface ScrapingResult {
-  success: boolean
-  message: string
-  data?: any
-  error?: string
-}
-
-// Función para obtener el rango de fechas automático (últimos 60 días)
 const getDateRange = () => {
   const today = new Date()
-  const startDate = subDays(today, 60)
+  const startDate = new Date()
+  startDate.setDate(today.getDate() - 60)
+
   return {
     from: startDate,
     to: today
@@ -108,105 +122,79 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
   }
 
   const handleInputChange = (field: keyof FormData, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-    
-    // Limpiar resultado cuando se cambian los datos
-    if (result) {
-      setResult(null)
-    }
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  // Obtener el rango de fechas actual para mostrar al usuario
-  const currentDateRange = getDateRange()
-
   return (
-    <Card className="w-full max-w-lg mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="text-center">
+        <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+          <Download className="h-6 w-6 text-orange-600" />
+        </div>
+        <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
           {title}
         </CardTitle>
+        <CardDescription className="text-gray-600 dark:text-gray-400">
+          Accede a F2X para descargar facturas automáticamente
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Campo NIT */}
           <div className="space-y-2">
-            <Label htmlFor="nit">NIT</Label>
+            <Label htmlFor="nit" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              NIT de la Empresa
+            </Label>
             <Input
               id="nit"
               type="text"
-              placeholder="Ingrese su NIT"
+              placeholder="Ej: 900123456-7"
               value={formData.nit}
               onChange={(e) => handleInputChange('nit', e.target.value)}
-              disabled={isLoading}
               required
+              className="w-full"
             />
           </div>
 
           {/* Campo Contraseña */}
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Contraseña
+            </Label>
             <Input
               id="password"
               type="password"
-              placeholder="Ingrese su contraseña"
+              placeholder="Ingresa tu contraseña"
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
-              disabled={isLoading}
               required
+              className="w-full"
             />
           </div>
 
-          {/* Opción de procesamiento a base de datos */}
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <input
-                id="processToDatabase"
-                type="checkbox"
-                title="Procesar automáticamente a la base de datos"
-                checked={formData.processToDatabase}
-                onChange={(e) => handleInputChange('processToDatabase', e.target.checked)}
-                disabled={isLoading}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <Label htmlFor="processToDatabase" className="text-sm font-medium">
-                Procesar automáticamente a la base de datos
-              </Label>
-            </div>
-            <p className="text-xs text-gray-500 ml-6">
-              Si está habilitado, el archivo Excel descargado se procesará automáticamente y las facturas se guardarán en la base de datos
-            </p>
+          {/* Checkbox para procesar en base de datos */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="processToDatabase"
+              checked={formData.processToDatabase}
+              onCheckedChange={(checked) => handleInputChange('processToDatabase', checked as boolean)}
+            />
+            <Label htmlFor="processToDatabase" className="flex items-center gap-2 text-sm">
+              <Database className="h-4 w-4" />
+              Procesar en base de datos
+            </Label>
           </div>
 
-          {/* Información del Rango de Fechas Automático */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
+          {/* Información del rango de fechas */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
               <Calendar className="h-4 w-4" />
-              Período de Consulta (Automático)
-            </Label>
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="text-sm text-blue-800">
-                <div className="font-medium mb-1">Se consultarán los últimos 60 días:</div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-blue-600">Desde:</span>
-                    <div className="font-semibold">{format(currentDateRange.from, "dd 'de' MMMM 'de' yyyy", { locale: es })}</div>
-                  </div>
-                  <div className="text-blue-400 mx-2">→</div>
-                  <div>
-                    <span className="text-xs text-blue-600">Hasta:</span>
-                    <div className="font-semibold">{format(currentDateRange.to, "dd 'de' MMMM 'de' yyyy", { locale: es })}</div>
-                  </div>
-                </div>
-                <div className="text-xs text-blue-600 mt-2">
-                  Total de días: 61 días
-                </div>
-              </div>
+              <span className="text-sm font-medium">Rango de fechas automático</span>
             </div>
-            <p className="text-xs text-gray-500">
-              El sistema consultará automáticamente las facturas de los últimos 60 días hasta hoy
+            <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+              Últimos 60 días: {format(getDateRange().from, 'dd/MM/yyyy')} - {format(getDateRange().to, 'dd/MM/yyyy')}
             </p>
           </div>
 
@@ -214,8 +202,8 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
           {result && (
             <div className={`p-4 rounded-lg border ${
               result.success 
-                ? 'bg-green-50 border-green-200 text-green-800' 
-                : 'bg-red-50 border-red-200 text-red-800'
+                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800' 
+                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800'
             }`}>
               <div className="flex items-center gap-2">
                 {result.success ? (
@@ -241,21 +229,15 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
           )}
 
           {/* Botón de envío */}
-          <Button 
+          <LoadingButton 
             type="submit" 
             className="w-full" 
             size="lg"
-            disabled={isLoading}
+            isLoading={isLoading}
+            loadingText="Procesando..."
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              'Iniciar Scraping F2X'
-            )}
-          </Button>
+            Iniciar Scraping F2X
+          </LoadingButton>
         </form>
       </CardContent>
     </Card>

@@ -1,33 +1,48 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react"
 import { MainLayout } from "@/components/MainLayout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { InvoicesTable, InvoicesSummary } from '@/components/InvoicesTable';
-import { Database } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LoadingButton } from "@/components/ui/loading"
+import { LoadingOverlay } from "@/components/ui/loading"
+import { Skeleton, TableSkeleton } from "@/components/ui/loading"
+import { useApiLoading } from "@/hooks/useLoading"
+import { 
+  Search, 
+  Download, 
+  FileText, 
+  Calendar,
+  Building2,
+  CheckCircle,
+  XCircle,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Filter
+} from "lucide-react"
+
+interface Invoice {
+  id: string;
+  nit: string;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  amount: number;
+  status: string;
+  supplierName: string;
+}
 
 interface InvoicesData {
-  invoices: any[];
-  pagination: {
-    page: number;
-    limit: number;
-    totalCount: number;
-    totalPages: number;
-  };
-  summary: {
-    totalInvoices: number;
-    totalSubtotal: number;
-    totalTax: number;
-    totalAmount: number;
-  };
+  invoices: Invoice[];
+  totalCount: number;
+  totalAmount: number;
 }
 
 export default function BaseDatos() {
   const [invoicesData, setInvoicesData] = useState<InvoicesData | null>(null);
-  const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
     nit: '',
     startDate: '',
@@ -36,8 +51,12 @@ export default function BaseDatos() {
     page: 1
   });
 
+  const { isLoading, apiCall } = useApiLoading({
+    initialLoading: true,
+    loadingText: 'Cargando facturas...'
+  });
+
   const loadInvoices = async (newFilters = filters) => {
-    setLoading(true);
     try {
       const params = new URLSearchParams();
       
@@ -60,8 +79,6 @@ export default function BaseDatos() {
     } catch (error) {
       console.error('Error:', error);
       alert('Error de conexión');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -83,8 +100,7 @@ export default function BaseDatos() {
       return;
     }
 
-    setLoading(true);
-    try {
+    await apiCall(async () => {
       const response = await fetch('/api/process-excel', {
         method: 'POST',
         headers: {
@@ -105,12 +121,7 @@ export default function BaseDatos() {
       } else {
         alert('Error procesando Excel: ' + result.error);
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error de conexión');
-    } finally {
-      setLoading(false);
-    }
+    }, 'Procesando archivo Excel...');
   };
 
   // Cargar datos al montar el componente
@@ -118,38 +129,75 @@ export default function BaseDatos() {
     loadInvoices();
   }, []);
 
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      'PAID': 'bg-green-100 text-green-800',
+      'PENDING': 'bg-yellow-100 text-yellow-800',
+      'OVERDUE': 'bg-red-100 text-red-800',
+      'CANCELLED': 'bg-gray-100 text-gray-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'PAID':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'PENDING':
+        return <Clock className="h-4 w-4" />;
+      case 'OVERDUE':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Database className="h-8 w-8 text-orange-500" />
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Base de Datos - Facturas
+              Base de Datos de Facturas
             </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Consultas y gestión de facturas procesadas
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Gestiona y consulta todas las facturas del sistema
             </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Total Facturas</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {invoicesData?.totalCount || 0}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Valor Total</p>
+              <p className="text-2xl font-bold text-green-600">
+                ${invoicesData?.totalAmount?.toLocaleString() || 0}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Filtros de búsqueda */}
+        {/* Filtros */}
         <Card>
           <CardHeader>
-            <CardTitle>Filtros de Búsqueda</CardTitle>
-            <CardDescription>
-              Buscar y filtrar facturas en la base de datos
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtros de Búsqueda
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="nit">NIT de la Empresa</Label>
+                <Label htmlFor="nit">NIT</Label>
                 <Input
                   id="nit"
+                  placeholder="Ingrese NIT"
                   value={filters.nit}
-                  onChange={(e) => setFilters(prev => ({ ...prev, nit: e.target.value }))}
-                  placeholder="900123456"
+                  onChange={(e) => setFilters({ ...filters, nit: e.target.value })}
                 />
               </div>
               <div>
@@ -158,7 +206,7 @@ export default function BaseDatos() {
                   id="startDate"
                   type="date"
                   value={filters.startDate}
-                  onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
                 />
               </div>
               <div>
@@ -167,88 +215,143 @@ export default function BaseDatos() {
                   id="endDate"
                   type="date"
                   value={filters.endDate}
-                  onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="status">Estado</Label>
                 <select
                   id="status"
-                  title="Seleccionar estado de factura"
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full h-9 px-3 py-2 border border-input rounded-md bg-background text-sm"
                   value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  aria-label="Seleccionar estado de factura"
                 >
                   <option value="">Todos</option>
-                  <option value="pending">Pendiente</option>
-                  <option value="paid">Pagado</option>
-                  <option value="overdue">Vencido</option>
-                  <option value="cancelled">Cancelado</option>
+                  <option value="PAID">Pagada</option>
+                  <option value="PENDING">Pendiente</option>
+                  <option value="OVERDUE">Vencida</option>
+                  <option value="CANCELLED">Cancelada</option>
                 </select>
               </div>
-              <div className="flex flex-col gap-2">
-                <Button onClick={handleSearch} disabled={loading}>
-                  {loading ? 'Buscando...' : 'Buscar'}
-                </Button>
-                <Button onClick={processExcel} variant="outline" disabled={loading}>
-                  Procesar Excel
-                </Button>
-              </div>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <Button onClick={handleSearch} className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Buscar
+              </Button>
+              <LoadingButton
+                onClick={processExcel}
+                isLoading={isLoading}
+                loadingText="Procesando..."
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Procesar Excel
+              </LoadingButton>
             </div>
           </CardContent>
         </Card>
 
-        {/* Resumen de facturas */}
-        {invoicesData?.summary && (
-          <InvoicesSummary summary={invoicesData.summary} />
-        )}
-
-        {/* Tabla de facturas */}
-        <InvoicesTable 
-          invoices={invoicesData?.invoices || []} 
-          loading={loading}
-        />
-
-        {/* Paginación */}
-        {invoicesData?.pagination && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-600">
-                  Página {invoicesData.pagination.page} de {invoicesData.pagination.totalPages}
-                  {' '}({invoicesData.pagination.totalCount} registros total)
+        {/* Tabla de Facturas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Facturas Encontradas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LoadingOverlay 
+              isLoading={isLoading} 
+              text="Cargando facturas..."
+              spinnerSize="lg"
+            >
+              {invoicesData ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium">NIT</th>
+                        <th className="text-left p-3 font-medium">N° Factura</th>
+                        <th className="text-left p-3 font-medium">Proveedor</th>
+                        <th className="text-left p-3 font-medium">Fecha Emisión</th>
+                        <th className="text-left p-3 font-medium">Fecha Vencimiento</th>
+                        <th className="text-left p-3 font-medium">Monto</th>
+                        <th className="text-left p-3 font-medium">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoicesData.invoices.map((invoice) => (
+                        <tr key={invoice.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-gray-500" />
+                              {invoice.nit}
+                            </div>
+                          </td>
+                          <td className="p-3 font-mono">{invoice.invoiceNumber}</td>
+                          <td className="p-3">{invoice.supplierName}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-gray-500" />
+                              {new Date(invoice.issueDate).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-gray-500" />
+                              {new Date(invoice.dueDate).toLocaleDateString()}
+                            </div>
+                          </td>
+                          <td className="p-3 font-mono">${invoice.amount.toLocaleString()}</td>
+                          <td className="p-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                              {getStatusIcon(invoice.status)}
+                              {invoice.status === 'PAID' && 'Pagada'}
+                              {invoice.status === 'PENDING' && 'Pendiente'}
+                              {invoice.status === 'OVERDUE' && 'Vencida'}
+                              {invoice.status === 'CANCELLED' && 'Cancelada'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+              ) : (
+                <TableSkeleton rows={10} columns={7} />
+              )}
+            </LoadingOverlay>
+
+            {/* Paginación */}
+            {invoicesData && invoicesData.totalCount > 50 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Mostrando página {filters.page} de {Math.ceil(invoicesData.totalCount / 50)}
+                </p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => handlePageChange(invoicesData.pagination.page - 1)}
-                    disabled={invoicesData.pagination.page <= 1 || loading}
+                    size="sm"
+                    onClick={() => handlePageChange(filters.page - 1)}
+                    disabled={filters.page <= 1}
                   >
+                    <ChevronLeft className="h-4 w-4" />
                     Anterior
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handlePageChange(invoicesData.pagination.page + 1)}
-                    disabled={invoicesData.pagination.page >= invoicesData.pagination.totalPages || loading}
+                    size="sm"
+                    onClick={() => handlePageChange(filters.page + 1)}
+                    disabled={filters.page >= Math.ceil(invoicesData.totalCount / 50)}
                   >
                     Siguiente
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!invoicesData && !loading && (
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center py-8">
-                <p className="text-gray-500">Ingrese criterios de búsqueda para cargar facturas</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
-  )
+  );
 }
