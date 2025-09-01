@@ -24,22 +24,9 @@ const PROTECTED_ROUTES: Record<string, { resource: string; action: string }> = {
   '/users': { resource: 'users', action: 'VIEW' },
   '/reports': { resource: 'reports', action: 'VIEW' },
   '/database': { resource: 'database', action: 'VIEW' },
+  '/services/dian-downloads': { resource: 'invoice-downloads', action: 'VIEW' },
+  '/services/invoice-automation': { resource: 'invoice-management', action: 'VIEW' },
 }
-
-// Area-specific route patterns
-const AREA_ROUTE_PATTERNS = [
-  { pattern: /^\/areas\/accounting(\/.*)?$/, areaId: 'accounting' },
-  { pattern: /^\/areas\/treasury(\/.*)?$/, areaId: 'treasury' },
-  { pattern: /^\/areas\/logistics(\/.*)?$/, areaId: 'logistics' },
-  { pattern: /^\/areas\/billing(\/.*)?$/, areaId: 'billing' }
-]
-
-// Module-specific route patterns
-const MODULE_ROUTE_PATTERNS = [
-  { pattern: /^\/areas\/accounting\/automatizacion-f2x$/, areaId: 'accounting', moduleId: 'f2x-automation' },
-  { pattern: /^\/areas\/accounting\/reconciliation$/, areaId: 'accounting', moduleId: 'reconciliation' },
-  { pattern: /^\/areas\/treasury\/portfolio$/, areaId: 'treasury', moduleId: 'portfolio' }
-]
 
 // Admin-only routes
 const ADMIN_ROUTES = [
