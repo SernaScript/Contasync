@@ -40,7 +40,7 @@ interface UsersResponse {
   totalCount: number;
 }
 
-export default function UsersPage() {
+export default function UsuariosPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');

@@ -33,8 +33,8 @@ const adminNavigation = [
     icon: BarChart3,
   },
   {
-    name: "Usuarios",
-    href: "/usuarios",
+    name: "Users",
+    href: "/users",
     icon: Users,
   },
   {
@@ -43,8 +43,8 @@ const adminNavigation = [
     icon: Database,
   },
   {
-    name: "Configuración",
-    href: "/configuracion",
+    name: "Settings",
+    href: "/settings",
     icon: Settings,
   },
 ]

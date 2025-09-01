@@ -36,7 +36,7 @@ interface Permission {
   description: string | null;
 }
 
-export default function SettingsPage() {
+export default function ConfiguracionPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ export default function SettingsPage() {
       if (result.success) {
         setRoles(result.data.roles);
       } else {
-        console.error('Error loading roles:', result.error);
+        console.error('Error cargando roles:', result.error);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -68,7 +68,7 @@ export default function SettingsPage() {
       if (result.success) {
         setPermissions(result.data.permissions);
       } else {
-        console.error('Error loading permissions:', result.error);
+        console.error('Error cargando permisos:', result.error);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -127,10 +127,10 @@ export default function SettingsPage() {
           <Settings className="h-8 w-8 text-purple-500" />
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              System Settings
+              Configuración del Sistema
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Manage roles, permissions and system configurations
+              Gestiona roles, permisos y configuraciones del sistema
             </p>
           </div>
         </div>
@@ -144,11 +144,11 @@ export default function SettingsPage() {
             </TabsTrigger>
             <TabsTrigger value="permissions" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Permissions
+              Permisos
             </TabsTrigger>
             <TabsTrigger value="system" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              System
+              Sistema
             </TabsTrigger>
           </TabsList>
 
@@ -158,14 +158,14 @@ export default function SettingsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Role Management</CardTitle>
+                    <CardTitle>Gestión de Roles</CardTitle>
                     <CardDescription>
-                      Manage system roles and their permissions
+                      Administra los roles del sistema y sus permisos
                     </CardDescription>
                   </div>
                   <Button className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Role
+                    Crear Rol
                   </Button>
                 </div>
               </CardHeader>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
                 {loading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Loading roles...</p>
+                    <p className="mt-2 text-gray-600">Cargando roles...</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
@@ -201,7 +201,7 @@ export default function SettingsPage() {
                         
                         {/* Permisos del rol */}
                         <div className="mt-4">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Permisos:</h4>
                           <div className="flex flex-wrap gap-2">
                             {role.permissions.map((permission) => (
                               <Badge key={permission.id} variant="outline" className="text-xs">
@@ -225,14 +225,14 @@ export default function SettingsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Permission Management</CardTitle>
+                    <CardTitle>Gestión de Permisos</CardTitle>
                     <CardDescription>
-                      Manage available system permissions
+                      Administra los permisos disponibles en el sistema
                     </CardDescription>
                   </div>
                   <Button className="bg-green-600 hover:bg-green-700">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Permission
+                    Crear Permiso
                   </Button>
                 </div>
               </CardHeader>
@@ -274,27 +274,27 @@ export default function SettingsPage() {
           <TabsContent value="system" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>System Configuration</CardTitle>
+                <CardTitle>Configuración del Sistema</CardTitle>
                 <CardDescription>
-                  General system configurations and parameters
+                  Configuraciones generales y parámetros del sistema
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card className="p-4">
-                      <h3 className="font-medium mb-2">Session Configuration</h3>
-                      <p className="text-sm text-gray-600">Session expiration time</p>
+                      <h3 className="font-medium mb-2">Configuración de Sesiones</h3>
+                      <p className="text-sm text-gray-600">Tiempo de expiración de sesiones</p>
                       <div className="mt-2">
-                        <Badge variant="outline">7 days</Badge>
+                        <Badge variant="outline">7 días</Badge>
                       </div>
                     </Card>
                     
                     <Card className="p-4">
-                      <h3 className="font-medium mb-2">Security Configuration</h3>
-                      <p className="text-sm text-gray-600">Password policies</p>
+                      <h3 className="font-medium mb-2">Configuración de Seguridad</h3>
+                      <p className="text-sm text-gray-600">Políticas de contraseñas</p>
                       <div className="mt-2">
-                        <Badge variant="outline">Minimum 8 characters</Badge>
+                        <Badge variant="outline">Mínimo 8 caracteres</Badge>
                       </div>
                     </Card>
                   </div>
@@ -302,11 +302,11 @@ export default function SettingsPage() {
                   <div className="flex gap-2">
                     <Button variant="outline">
                       <Settings className="h-4 w-4 mr-2" />
-                      Configure Sessions
+                      Configurar Sesiones
                     </Button>
                     <Button variant="outline">
                       <Lock className="h-4 w-4 mr-2" />
-                      Configure Security
+                      Configurar Seguridad
                     </Button>
                   </div>
                 </div>
