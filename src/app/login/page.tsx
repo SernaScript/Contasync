@@ -23,13 +23,16 @@ import {
   TrendingUp,
   BarChart3,
   Calculator,
-  Database
+  Database,
+  AlertCircle,
+  X
 } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -38,6 +41,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null) // Limpiar errores previos
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -55,7 +59,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed')
+        throw new Error(data.message || 'Credenciales inválidas')
       }
 
       // Redirect to dashboard on success
@@ -63,7 +67,8 @@ export default function LoginPage() {
       
     } catch (error) {
       console.error('Login error:', error)
-      alert(error instanceof Error ? error.message : 'Error al iniciar sesión')
+      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -74,6 +79,14 @@ export default function LoginPage() {
       ...formData,
       [e.target.name]: e.target.value
     })
+    // Limpiar error cuando el usuario empiece a escribir
+    if (error) {
+      setError(null)
+    }
+  }
+
+  const clearError = () => {
+    setError(null)
   }
 
   return (
@@ -187,6 +200,31 @@ export default function LoginPage() {
                     )}
                   </Button>
                 </form>
+
+                {/* Error Alert */}
+                {error && (
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-red-800 mb-1">
+                          Error de Autenticación
+                        </h4>
+                        <p className="text-sm text-red-700">
+                          {error}
+                        </p>
+                      </div>
+                      <button
+                        onClick={clearError}
+                        className="text-red-400 hover:text-red-600 transition-colors"
+                        title="Cerrar alerta de error"
+                        aria-label="Cerrar alerta de error"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-center text-sm text-gray-600">
