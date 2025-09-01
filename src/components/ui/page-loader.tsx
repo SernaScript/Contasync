@@ -13,7 +13,7 @@ const PageLoader = React.forwardRef<HTMLDivElement, PageLoaderProps>(
   ({ children, className }, ref) => {
     const pathname = usePathname()
     const [isLoading, setIsLoading] = React.useState(false)
-    const [loadingText, setLoadingText] = React.useState("Cargando página...")
+    const [loadingText, setLoadingText] = React.useState("")
 
     React.useEffect(() => {
       const handleStart = () => {
@@ -29,7 +29,7 @@ const PageLoader = React.forwardRef<HTMLDivElement, PageLoaderProps>(
       setIsLoading(true)
       const timer = setTimeout(() => {
         setIsLoading(false)
-      }, 500)
+      }, 800)
 
       return () => {
         clearTimeout(timer)
