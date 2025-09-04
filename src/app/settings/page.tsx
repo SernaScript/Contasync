@@ -659,176 +659,156 @@ export default function ConfiguracionPage() {
 
           {/* Tab de Integraciones */}
           <TabsContent value="integrations" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+            {/* Integración SIIGO - Diseño Compacto */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Database className="h-5 w-5 text-blue-600" />
+                  </div>
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      Integración SIIGO
+                    <h3 className="font-medium text-gray-900">SIIGO ERP</h3>
+                    <div className="flex items-center gap-2 mt-1">
                       {siigoCredentials.id ? (
-                        <Badge className="bg-green-100 text-green-800">
+                        <Badge className="bg-green-100 text-green-800 text-xs">
                           <Check className="h-3 w-3 mr-1" />
-                          Configurado
+                          Conectado
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-orange-600">
+                        <Badge variant="outline" className="text-orange-600 text-xs">
                           No configurado
                         </Badge>
                       )}
-                    </CardTitle>
-                    <CardDescription>
-                      Configura las credenciales para la integración con SIIGO ERP
-                    </CardDescription>
+                      {siigoCredentials.id && (
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {siigoCredentials.applicationType}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                  {!isEditingSiigo && (
+                </div>
+                
+                {!isEditingSiigo && (
+                  <Button 
+                    size="sm"
+                    onClick={async () => {
+                      await loadSiigoCredentials(true);
+                      setIsEditingSiigo(true);
+                    }}
+                    className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
+                  >
+                    {siigoCredentials.id ? (
+                      <>
+                        <Edit className="h-3 w-3 mr-1" />
+                        Editar
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-3 w-3 mr-1" />
+                        Configurar
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+
+              {/* Formulario de edición compacto */}
+              {isEditingSiigo && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="apiUser" className="text-xs text-gray-600">Usuario API</Label>
+                      <Input
+                        id="apiUser"
+                        value={siigoForm.apiUser}
+                        onChange={(e) => setSiigoForm(prev => ({
+                          ...prev,
+                          apiUser: e.target.value
+                        }))}
+                        placeholder="Usuario API"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="accessKey" className="text-xs text-gray-600">Access Key</Label>
+                      <Input
+                        id="accessKey"
+                        type="password"
+                        value={siigoForm.accessKey}
+                        onChange={(e) => setSiigoForm(prev => ({
+                          ...prev,
+                          accessKey: e.target.value
+                        }))}
+                        placeholder="Clave de acceso"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="applicationType" className="text-xs text-gray-600">Tipo</Label>
+                      <Input
+                        id="applicationType"
+                        value={siigoForm.applicationType}
+                        onChange={(e) => setSiigoForm(prev => ({
+                          ...prev,
+                          applicationType: e.target.value
+                        }))}
+                        placeholder="Producción"
+                        list="applicationTypes"
+                        className="h-8 text-sm"
+                      />
+                      <datalist id="applicationTypes">
+                        <option value="development">Desarrollo</option>
+                        <option value="staging">Pruebas</option>
+                        <option value="production">Producción</option>
+                      </datalist>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-3">
                     <Button 
-                      onClick={async () => {
-                        // Cargar los valores reales para el formulario
-                        await loadSiigoCredentials(true);
-                        setIsEditingSiigo(true);
-                      }}
-                      className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
+                      size="sm" 
+                      onClick={handleSiigoSave} 
+                      className="bg-green-600 hover:bg-green-700"
                     >
-                      {siigoCredentials.id ? (
-                        <>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar Credenciales
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Crear Credenciales
-                        </>
-                      )}
+                      <Save className="h-3 w-3 mr-1" />
+                      Guardar
                     </Button>
-                  )}
+                    <Button 
+                      size="sm" 
+                      onClick={handleSiigoCancel} 
+                      variant="outline"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {isEditingSiigo ? (
-                    // Formulario de edición
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="apiUser">Usuario API</Label>
-                          <Input
-                            id="apiUser"
-                            value={siigoForm.apiUser}
-                            onChange={(e) => setSiigoForm(prev => ({
-                              ...prev,
-                              apiUser: e.target.value
-                            }))}
-                            placeholder="Ingresa el usuario de la API"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="accessKey">Access Key</Label>
-                          <Input
-                            id="accessKey"
-                            type="password"
-                            value={siigoForm.accessKey}
-                            onChange={(e) => setSiigoForm(prev => ({
-                              ...prev,
-                              accessKey: e.target.value
-                            }))}
-                            placeholder="Ingresa la clave de acceso"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="applicationType">Tipo de Aplicación</Label>
-                        <Input
-                          id="applicationType"
-                          value={siigoForm.applicationType}
-                          onChange={(e) => setSiigoForm(prev => ({
-                            ...prev,
-                            applicationType: e.target.value
-                          }))}
-                          placeholder="Desarrollo, Pruebas o Producción"
-                          list="applicationTypes"
-                        />
-                        <datalist id="applicationTypes">
-                          <option value="development">Desarrollo</option>
-                          <option value="staging">Pruebas</option>
-                          <option value="production">Producción</option>
-                        </datalist>
-                      </div>
-                      
-                      <div className="flex gap-2 pt-4">
-                        <Button onClick={handleSiigoSave} className="bg-green-600 hover:bg-green-700">
-                          <Save className="h-4 w-4 mr-2" />
-                          Guardar Cambios
-                        </Button>
-                        <Button onClick={handleSiigoCancel} variant="outline">
-                          <X className="h-4 w-4 mr-2" />
-                          Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    // Vista de solo lectura
-                    <div className="space-y-4">
-                      {siigoCredentials.id ? (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700">Usuario API</Label>
-                              <p className="text-sm text-gray-900 mt-1">{siigoCredentials.apiUser}</p>
-                            </div>
-                            
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700">Access Key</Label>
-                              <p className="text-sm text-gray-900 mt-1">{siigoCredentials.accessKey}</p>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <Label className="text-sm font-medium text-gray-700">Tipo de Aplicación</Label>
-                            <div className="mt-1">
-                              <Badge variant="outline" className="capitalize">
-                                {siigoCredentials.applicationType}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <div className="pt-2">
-                            <p className="text-xs text-gray-500">
-                              Las credenciales están encriptadas y se almacenan de forma segura en el sistema.
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center py-8">
-                          <Database className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">
-                            No hay credenciales configuradas
-                          </h3>
-                          <p className="text-gray-500 mb-4">
-                            Configura las credenciales de SIIGO para habilitar la integración con el ERP.
-                          </p>
-                          <Button 
-                            onClick={() => {
-                              setSiigoForm({
-                                apiUser: '',
-                                accessKey: '',
-                                applicationType: 'production'
-                              });
-                              setIsEditingSiigo(true);
-                            }}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Configurar Credenciales
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+              )}
+
+              {/* Información compacta cuando está configurado */}
+              {!isEditingSiigo && siigoCredentials.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>Usuario: <span className="font-medium text-gray-900">{siigoCredentials.apiUser}</span></span>
+                    <span className="text-xs text-gray-500">Credenciales seguras</span>
+                  </div>
                 </div>
-              </CardContent>
+              )}
+            </Card>
+
+            {/* Placeholder para futuras integraciones */}
+            <Card className="p-4 border-dashed border-gray-300">
+              <div className="flex items-center gap-3 text-gray-500">
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Más integraciones</h3>
+                  <p className="text-sm">Próximamente más conectores disponibles</p>
+                </div>
+              </div>
             </Card>
           </TabsContent>
         </Tabs>
