@@ -56,9 +56,13 @@ interface User {
 }
 
 interface SiigoCredentials {
+  id?: string;
   apiUser: string;
   accessKey: string;
   applicationType: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function ConfiguracionPage() {
@@ -70,7 +74,7 @@ export default function ConfiguracionPage() {
   const [siigoCredentials, setSiigoCredentials] = useState<SiigoCredentials>({
     apiUser: '',
     accessKey: '',
-    applicationType: ''
+    applicationType: 'production'
   });
   const [isEditingSiigo, setIsEditingSiigo] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -134,15 +138,35 @@ export default function ConfiguracionPage() {
 
   const loadSiigoCredentials = async () => {
     try {
-      // Aquí se cargarían las credenciales desde la API
-      // Por ahora usamos datos de ejemplo
-      setSiigoCredentials({
-        apiUser: 'usuario_api_siigo',
-        accessKey: '••••••••••••••••••••••••••••••••',
-        applicationType: 'production'
-      });
+      const response = await fetch('/api/siigo-credentials');
+      const result = await response.json();
+
+      if (result.success) {
+        if (result.data.credentials) {
+          setSiigoCredentials(result.data.credentials);
+        } else {
+          // Si no hay credenciales, usar valores por defecto
+          setSiigoCredentials({
+            apiUser: '',
+            accessKey: '',
+            applicationType: 'production'
+          });
+        }
+      } else {
+        console.error('Error cargando credenciales SIIGO:', result.error);
+        setSiigoCredentials({
+          apiUser: '',
+          accessKey: '',
+          applicationType: 'production'
+        });
+      }
     } catch (error) {
       console.error('Error cargando credenciales SIIGO:', error);
+      setSiigoCredentials({
+        apiUser: '',
+        accessKey: '',
+        applicationType: 'production'
+      });
     }
   };
 
@@ -155,12 +179,61 @@ export default function ConfiguracionPage() {
 
   const handleSiigoSave = async () => {
     try {
-      // Aquí se guardarían las credenciales en la API
-      console.log('Guardando credenciales SIIGO:', siigoCredentials);
-      setIsEditingSiigo(false);
-      // Mostrar mensaje de éxito
+      setLoading(true);
+      
+      // Validar que todos los campos estén llenos
+      if (!siigoCredentials.apiUser || !siigoCredentials.accessKey || !siigoCredentials.applicationType) {
+        alert('Todos los campos son requeridos');
+        setLoading(false);
+        return;
+      }
+
+      let response;
+      if (siigoCredentials.id) {
+        // Actualizar credenciales existentes
+        response = await fetch('/api/siigo-credentials', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: siigoCredentials.id,
+            apiUser: siigoCredentials.apiUser,
+            accessKey: siigoCredentials.accessKey,
+            applicationType: siigoCredentials.applicationType
+          }),
+        });
+      } else {
+        // Crear nuevas credenciales
+        response = await fetch('/api/siigo-credentials', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            apiUser: siigoCredentials.apiUser,
+            accessKey: siigoCredentials.accessKey,
+            applicationType: siigoCredentials.applicationType
+          }),
+        });
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSiigoCredentials(result.data.credentials);
+        setIsEditingSiigo(false);
+        console.log('Credenciales SIIGO guardadas exitosamente');
+        // Aquí podrías mostrar un toast de éxito
+      } else {
+        console.error('Error guardando credenciales SIIGO:', result.error);
+        alert(`Error: ${result.error}`);
+      }
     } catch (error) {
       console.error('Error guardando credenciales SIIGO:', error);
+      alert('Error al guardar las credenciales');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -546,7 +619,19 @@ export default function ConfiguracionPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Integración SIIGO</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      Integración SIIGO
+                      {siigoCredentials.id ? (
+                        <Badge className="bg-green-100 text-green-800">
+                          <Check className="h-3 w-3 mr-1" />
+                          Configurado
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-orange-600">
+                          No configurado
+                        </Badge>
+                      )}
+                    </CardTitle>
                     <CardDescription>
                       Configura las credenciales para la integración con SIIGO ERP
                     </CardDescription>
@@ -554,10 +639,19 @@ export default function ConfiguracionPage() {
                   {!isEditingSiigo && (
                     <Button 
                       onClick={() => setIsEditingSiigo(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar Credenciales
+                      {siigoCredentials.id ? (
+                        <>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar Credenciales
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Crear Credenciales
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>
@@ -629,32 +723,53 @@ export default function ConfiguracionPage() {
                   ) : (
                     // Vista de solo lectura
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-gray-700">Usuario API</Label>
-                          <p className="text-sm text-gray-900 mt-1">{siigoCredentials.apiUser}</p>
+                      {siigoCredentials.id ? (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Usuario API</Label>
+                              <p className="text-sm text-gray-900 mt-1">{siigoCredentials.apiUser}</p>
+                            </div>
+                            
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Access Key</Label>
+                              <p className="text-sm text-gray-900 mt-1">{siigoCredentials.accessKey}</p>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Tipo de Aplicación</Label>
+                            <div className="mt-1">
+                              <Badge variant="outline" className="capitalize">
+                                {siigoCredentials.applicationType}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <div className="pt-2">
+                            <p className="text-xs text-gray-500">
+                              Las credenciales están encriptadas y se almacenan de forma segura en el sistema.
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Database className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            No hay credenciales configuradas
+                          </h3>
+                          <p className="text-gray-500 mb-4">
+                            Configura las credenciales de SIIGO para habilitar la integración con el ERP.
+                          </p>
+                          <Button 
+                            onClick={() => setIsEditingSiigo(true)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Configurar Credenciales
+                          </Button>
                         </div>
-                        
-                        <div>
-                          <Label className="text-sm font-medium text-gray-700">Access Key</Label>
-                          <p className="text-sm text-gray-900 mt-1">{siigoCredentials.accessKey}</p>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Tipo de Aplicación</Label>
-                        <div className="mt-1">
-                          <Badge variant="outline" className="capitalize">
-                            {siigoCredentials.applicationType}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-2">
-                        <p className="text-xs text-gray-500">
-                          Las credenciales están encriptadas y se almacenan de forma segura en el sistema.
-                        </p>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
