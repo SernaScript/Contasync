@@ -26,6 +26,12 @@ model User {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
   sessions Session[]
+  
+  // Business Relations
+  identificationTypeId String?
+  identificationType   IdentificationType? @relation(fields: [identificationTypeId], references: [id])
+  userIdentificationNumber String?
+  invoices Invoice[]
 
   @@map("users")
 }
@@ -89,82 +95,113 @@ model Session {
 }
 
 // Business Models
-model Company {
-  id        String   @id @default(cuid())
-  nit       String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model IdentificationType {
+  id                    String   @id @default(cuid())
+  identificationTypeName String
+  identificationTypeEntity String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  // Relaciones
-  invoices Invoice[]
+  // Relations
+  users        User[]
+  thirdParties ThirdParty[]
 
-  @@map("companies")
+  @@map("identification_types")
+}
+
+model ThirdParty {
+  id                        String   @id @default(cuid())
+  thirdPartyName            String
+  thirdPartyIdentification  String
+  thirdPartyStatus          Int      @default(1)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  // Relations
+  identificationTypeId String
+  identificationType   IdentificationType @relation(fields: [identificationTypeId], references: [id])
+  invoices            Invoice[]
+
+  @@map("third_parties")
 }
 
 model Invoice {
-  id             String   @id @default(cuid())
-  
-  // Información básica de la factura
-  invoiceNumber  String
-  documentType   String
-  issueDate      DateTime
-  dueDate        DateTime?
-  
-  // Información financiera
-  subtotal       Decimal  @db.Decimal(12, 2)
-  tax            Decimal  @db.Decimal(12, 2)
-  total          Decimal  @db.Decimal(12, 2)
-  
-  // Estado de la factura
-  status         String   @default("pending") // pending, paid, overdue, cancelled
-  
-  // Información del proveedor/cliente
-  supplierName   String?
-  supplierNit    String?
-  
-  // Descripción y observaciones
-  description    String?
-  observations   String?
-  
-  // Metadatos del scraping
-  scrapedAt      DateTime @default(now())
-  sourceFile     String?  // Nombre del archivo Excel original
-  
-  // Relaciones
-  companyId      String
-  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(cuid())
+  invoicePrefix String
+  invoiceNumber String
+  invoiceDate   DateTime
+  invoiceCufe   String?
+  invoiceState  Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  thirdPartyId String
+  thirdParty   ThirdParty @relation(fields: [thirdPartyId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  invoiceProducts InvoiceProduct[]
+  apiResponses    ApiResponse[]
 
   @@map("invoices")
 }
 
-model ScrapingLog {
-  id          String   @id @default(cuid())
-  
-  // Información del scraping
-  companyNit  String
-  startDate   DateTime
-  endDate     DateTime
-  
-  // Resultado del scraping
-  status      String   // success, error, partial
-  message     String?
-  
-  // Archivos procesados
-  fileName    String?
-  recordsFound Int     @default(0)
-  recordsProcessed Int @default(0)
-  recordsErrors Int    @default(0)
-  
-  // Metadatos
-  duration    Int?     // Duración en segundos
-  errorDetails String? // Detalles del error si los hay
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model InvoiceProduct {
+  id                  String   @id @default(cuid())
+  invoiceProductName  String
+  productQuantity     Float
+  productPrice        Float
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@map("scraping_logs")
+  // Relations
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  taxId       String?
+  tax         Tax?    @relation(fields: [taxId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@map("invoice_products")
+}
+
+model Tax {
+  id              String   @id @default(cuid())
+  taxType         String
+  taxName         String
+  taxPercentage   Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  invoiceProducts InvoiceProduct[]
+
+  @@map("taxes")
+}
+
+model Warehouse {
+  id              String   @id @default(cuid())
+  warehouseName   String
+  warehouseActive Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  invoiceProducts InvoiceProduct[]
+
+  @@map("warehouses")
+}
+
+model ApiResponse {
+  id                String   @id @default(cuid())
+  apiResponseDate   DateTime
+  apiResponseJson   Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@map("api_responses")
 }
