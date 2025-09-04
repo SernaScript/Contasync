@@ -40,6 +40,20 @@ interface Permission {
   description: string | null;
 }
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+  createdAt: string;
+  role: {
+    id: string;
+    name: string;
+    displayName: string;
+    description: string | null;
+  };
+}
+
 interface SiigoCredentials {
   apiUser: string;
   accessKey: string;
@@ -49,6 +63,7 @@ interface SiigoCredentials {
 export default function ConfiguracionPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("roles");
   const [siigoCredentials, setSiigoCredentials] = useState<SiigoCredentials>({
@@ -91,6 +106,24 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/users');
+      const result = await response.json();
+
+      if (result.success) {
+        setUsers(result.data.users);
+      } else {
+        console.error('Error cargando usuarios:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadSiigoCredentials = async () => {
     try {
       // Aquí se cargarían las credenciales desde la API
@@ -108,6 +141,7 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     loadRoles();
     loadPermissions();
+    loadUsers();
     loadSiigoCredentials();
   }, []);
 
@@ -166,6 +200,20 @@ export default function ConfiguracionPage() {
     return icons[resource] || <Key className="h-3 w-3" />;
   };
 
+  const getUserStatusColor = (isActive: boolean) => {
+    return isActive 
+      ? 'bg-green-100 text-green-800' 
+      : 'bg-red-100 text-red-800';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -184,18 +232,14 @@ export default function ConfiguracionPage() {
 
         {/* Tabs de configuración */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="roles" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Roles
             </TabsTrigger>
-            <TabsTrigger value="permissions" className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Permisos
-            </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Sistema
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Usuarios
             </TabsTrigger>
             <TabsTrigger value="integrations" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
@@ -211,13 +255,9 @@ export default function ConfiguracionPage() {
                   <div>
                     <CardTitle>Gestión de Roles</CardTitle>
                     <CardDescription>
-                      Administra los roles del sistema y sus permisos
+                      Los roles del sistema son estáticos y no se pueden modificar
                     </CardDescription>
                   </div>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear Rol
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -239,14 +279,6 @@ export default function ConfiguracionPage() {
                               <h3 className="font-medium">{role.displayName}</h3>
                               <p className="text-sm text-gray-600">{role.description}</p>
                             </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
                           </div>
                         </div>
                         
@@ -270,97 +302,69 @@ export default function ConfiguracionPage() {
             </Card>
           </TabsContent>
 
-          {/* Tab de Permisos */}
-          <TabsContent value="permissions" className="space-y-4">
+          {/* Tab de Usuarios */}
+          <TabsContent value="users" className="space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Gestión de Permisos</CardTitle>
+                    <CardTitle>Gestión de Usuarios</CardTitle>
                     <CardDescription>
-                      Administra los permisos disponibles en el sistema
+                      Administra los usuarios del sistema y sus roles
                     </CardDescription>
                   </div>
-                  <Button className="bg-green-600 hover:bg-green-700">
+                  <Button className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="h-4 w-4 mr-2" />
-                    Crear Permiso
+                    Crear Usuario
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4">
-                  {permissions.map((permission) => (
-                    <Card key={permission.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge className={getActionColor(permission.action)}>
-                            {permission.action}
-                          </Badge>
-                          <div>
-                            <h3 className="font-medium">{permission.name}</h3>
-                            <p className="text-sm text-gray-600">{permission.description}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {getResourceIcon(permission.resource)}
-                              <span className="text-xs text-gray-500">{permission.resource}</span>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Cargando usuarios...</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {users.map((user) => (
+                      <Card key={user.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                              <Users className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-medium">{user.name}</h3>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className={getRoleColor(user.role.name)}>
+                                  {user.role.displayName}
+                                </Badge>
+                                <Badge className={getUserStatusColor(user.isActive)}>
+                                  {user.isActive ? 'Activo' : 'Inactivo'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">
+                              Creado: {formatDate(user.createdAt)}
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              <Button size="sm" variant="outline">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab de Sistema */}
-          <TabsContent value="system" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración del Sistema</CardTitle>
-                <CardDescription>
-                  Configuraciones generales y parámetros del sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-4">
-                      <h3 className="font-medium mb-2">Configuración de Sesiones</h3>
-                      <p className="text-sm text-gray-600">Tiempo de expiración de sesiones</p>
-                      <div className="mt-2">
-                        <Badge variant="outline">7 días</Badge>
-                      </div>
-                    </Card>
-                    
-                    <Card className="p-4">
-                      <h3 className="font-medium mb-2">Configuración de Seguridad</h3>
-                      <p className="text-sm text-gray-600">Políticas de contraseñas</p>
-                      <div className="mt-2">
-                        <Badge variant="outline">Mínimo 8 caracteres</Badge>
-                      </div>
-                    </Card>
+                      </Card>
+                    ))}
                   </div>
-                  
-                  <div className="flex gap-2">
-                    <Button variant="outline">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Configurar Sesiones
-                    </Button>
-                    <Button variant="outline">
-                      <Lock className="h-4 w-4 mr-2" />
-                      Configurar Seguridad
-                    </Button>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
