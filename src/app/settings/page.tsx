@@ -89,6 +89,13 @@ export default function ConfiguracionPage() {
     email: '',
     isActive: true
   });
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+  const [hasSuccessfulConnection, setHasSuccessfulConnection] = useState(false);
 
   const loadRoles = async () => {
     setLoading(true);
@@ -225,6 +232,13 @@ export default function ConfiguracionPage() {
         return;
       }
 
+      // Validar que se haya probado la conexión exitosamente
+      if (!hasSuccessfulConnection) {
+        alert('Debes probar la conexión exitosamente antes de guardar las credenciales');
+        setLoading(false);
+        return;
+      }
+
       let response;
       if (siigoForm.id) {
         // Actualizar credenciales existentes
@@ -282,6 +296,8 @@ export default function ConfiguracionPage() {
 
   const handleSiigoCancel = async () => {
     setIsEditingSiigo(false);
+    setHasSuccessfulConnection(false);
+    setConnectionTestResult(null);
     // Recargar las credenciales para restaurar el estado
     await loadSiigoCredentials();
   };
@@ -373,6 +389,60 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const testSiigoConnection = async () => {
+    if (!siigoForm.apiUser || !siigoForm.accessKey) {
+      setConnectionTestResult({
+        success: false,
+        message: 'Por favor, ingresa el usuario API y la clave de acceso antes de probar la conexión.'
+      });
+      setHasSuccessfulConnection(false);
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionTestResult(null);
+    setHasSuccessfulConnection(false);
+
+    try {
+      const response = await fetch('/api/siigo-credentials/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          apiUser: siigoForm.apiUser,
+          accessKey: siigoForm.accessKey
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const translatedMessage = translateSiigoError(result.data.status, result.message);
+        setConnectionTestResult({
+          success: true,
+          message: translatedMessage
+        });
+        setHasSuccessfulConnection(true);
+      } else {
+        const translatedMessage = translateSiigoError(result.data?.status || 0, result.message);
+        setConnectionTestResult({
+          success: false,
+          message: translatedMessage
+        });
+        setHasSuccessfulConnection(false);
+      }
+    } catch (error) {
+      setConnectionTestResult({
+        success: false,
+        message: `Error de conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`
+      });
+      setHasSuccessfulConnection(false);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const getRoleColor = (roleName: string) => {
     const colors: { [key: string]: string } = {
       'SUPER_ADMIN': 'bg-red-100 text-red-800',
@@ -424,6 +494,26 @@ export default function ConfiguracionPage() {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const translateSiigoError = (status: number, message: string) => {
+    const errorMessages: { [key: number]: string } = {
+      200: 'Conexión exitosa con SIIGO API',
+      201: 'Conexión exitosa con SIIGO API',
+      400: 'Error en la solicitud: Faltan parámetros obligatorios o hay un problema con los datos enviados',
+      401: 'Error de autenticación: Las credenciales proporcionadas no son válidas',
+      403: 'Error de permisos: El usuario no tiene permisos para acceder a la API',
+      404: 'Error: El recurso solicitado no existe en SIIGO API',
+      408: 'Error de tiempo: SIIGO API no respondió dentro del tiempo esperado',
+      409: 'Error de conflicto: Los datos enviados causan un conflicto en el servidor',
+      415: 'Error de formato: Se envió un tipo de contenido no soportado',
+      429: 'Error de límite: Se han enviado demasiadas solicitudes. Máximo 100 por minuto',
+      500: 'Error interno del servidor de SIIGO API',
+      503: 'SIIGO API no está disponible temporalmente por mantenimiento o sobrecarga',
+      504: 'Error de tiempo: SIIGO API no pudo responder debido a sobrecarga temporal'
+    };
+
+    return errorMessages[status] || `Error ${status}: ${message}`;
   };
 
   return (
@@ -689,26 +779,50 @@ export default function ConfiguracionPage() {
                 </div>
                 
                 {!isEditingSiigo && (
-                  <Button 
-                    size="sm"
-                    onClick={async () => {
-                      await loadSiigoCredentials(true);
-                      setIsEditingSiigo(true);
-                    }}
-                    className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
-                  >
-                    {siigoCredentials.id ? (
-                      <>
-                        <Edit className="h-3 w-3 mr-1" />
-                        Editar
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-3 w-3 mr-1" />
-                        Configurar
-                      </>
+                  <div className="flex gap-2">
+                    {siigoCredentials.id && (
+                      <Button 
+                        size="sm"
+                        onClick={testSiigoConnection}
+                        disabled={isTestingConnection}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {isTestingConnection ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                            Probando...
+                          </>
+                        ) : (
+                          <>
+                            <Database className="h-3 w-3 mr-1" />
+                            Probar Conexión
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                    <Button 
+                      size="sm"
+                      onClick={async () => {
+                        await loadSiigoCredentials(true);
+                        setIsEditingSiigo(true);
+                        setHasSuccessfulConnection(false);
+                        setConnectionTestResult(null);
+                      }}
+                      className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
+                    >
+                      {siigoCredentials.id ? (
+                        <>
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Configurar
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -769,21 +883,58 @@ export default function ConfiguracionPage() {
                   <div className="flex gap-2 mt-3">
                     <Button 
                       size="sm" 
-                      onClick={handleSiigoSave} 
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Save className="h-3 w-3 mr-1" />
-                      Guardar
-                    </Button>
-                    <Button 
-                      size="sm" 
                       onClick={handleSiigoCancel} 
                       variant="outline"
                     >
                       <X className="h-3 w-3 mr-1" />
                       Cancelar
                     </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={testSiigoConnection}
+                      disabled={isTestingConnection || !siigoForm.apiUser || !siigoForm.accessKey}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isTestingConnection ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                          Probando...
+                        </>
+                      ) : (
+                        <>
+                          <Database className="h-3 w-3 mr-1" />
+                          Probar Conexión
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={handleSiigoSave}
+                      disabled={!hasSuccessfulConnection}
+                      className={hasSuccessfulConnection ? "bg-green-600 hover:bg-green-700" : "bg-gray-400 cursor-not-allowed"}
+                    >
+                      <Save className="h-3 w-3 mr-1" />
+                      {hasSuccessfulConnection ? "Guardar" : "Probar conexión primero"}
+                    </Button>
                   </div>
+                  
+                  {/* Resultado del test de conexión */}
+                  {connectionTestResult && (
+                    <div className="mt-4 p-3 rounded-lg border">
+                      <div className={`flex items-center gap-2 ${
+                        connectionTestResult.success ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        {connectionTestResult.success ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                        <span className="font-medium text-sm">
+                          {connectionTestResult.message}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -794,6 +945,24 @@ export default function ConfiguracionPage() {
                     <span>Usuario: <span className="font-medium text-gray-900">{siigoCredentials.apiUser}</span></span>
                     <span className="text-xs text-gray-500">Credenciales seguras</span>
                   </div>
+                  
+                  {/* Resultado del test de conexión cuando no está en modo edición */}
+                  {connectionTestResult && (
+                    <div className="mt-3 p-3 rounded-lg border">
+                      <div className={`flex items-center gap-2 ${
+                        connectionTestResult.success ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        {connectionTestResult.success ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                        <span className="font-medium text-sm">
+                          {connectionTestResult.message}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
