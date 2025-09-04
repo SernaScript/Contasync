@@ -76,6 +76,11 @@ export default function ConfiguracionPage() {
     accessKey: '',
     applicationType: 'production'
   });
+  const [siigoForm, setSiigoForm] = useState<SiigoCredentials>({
+    apiUser: '',
+    accessKey: '',
+    applicationType: 'production'
+  });
   const [isEditingSiigo, setIsEditingSiigo] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -136,37 +141,69 @@ export default function ConfiguracionPage() {
     }
   };
 
-  const loadSiigoCredentials = async () => {
+  const loadSiigoCredentials = async (includeRealKey = false) => {
     try {
-      const response = await fetch('/api/siigo-credentials');
+      const url = includeRealKey 
+        ? '/api/siigo-credentials?includeRealKey=true'
+        : '/api/siigo-credentials';
+      
+      const response = await fetch(url);
       const result = await response.json();
 
       if (result.success) {
         if (result.data.credentials) {
-          setSiigoCredentials(result.data.credentials);
+          if (includeRealKey) {
+            // Para el formulario: usar valores reales (sin enmascarar)
+            setSiigoForm(result.data.credentials);
+          } else {
+            // Para visualización: enmascarar la access key
+            const displayCredentials = {
+              ...result.data.credentials,
+              accessKey: '••••••••••••••••••••••••••••••••'
+            };
+            setSiigoCredentials(displayCredentials);
+          }
         } else {
           // Si no hay credenciales, usar valores por defecto
-          setSiigoCredentials({
+          const defaultCredentials = {
             apiUser: '',
             accessKey: '',
             applicationType: 'production'
-          });
+          };
+          if (includeRealKey) {
+            setSiigoForm(defaultCredentials);
+          } else {
+            setSiigoCredentials(defaultCredentials);
+            setSiigoForm(defaultCredentials);
+          }
         }
       } else {
         console.error('Error cargando credenciales SIIGO:', result.error);
-        setSiigoCredentials({
+        const defaultCredentials = {
           apiUser: '',
           accessKey: '',
           applicationType: 'production'
-        });
+        };
+        if (includeRealKey) {
+          setSiigoForm(defaultCredentials);
+        } else {
+          setSiigoCredentials(defaultCredentials);
+          setSiigoForm(defaultCredentials);
+        }
       }
     } catch (error) {
       console.error('Error cargando credenciales SIIGO:', error);
-      setSiigoCredentials({
+      const defaultCredentials = {
         apiUser: '',
         accessKey: '',
         applicationType: 'production'
-      });
+      };
+      if (includeRealKey) {
+        setSiigoForm(defaultCredentials);
+      } else {
+        setSiigoCredentials(defaultCredentials);
+        setSiigoForm(defaultCredentials);
+      }
     }
   };
 
@@ -182,14 +219,14 @@ export default function ConfiguracionPage() {
       setLoading(true);
       
       // Validar que todos los campos estén llenos
-      if (!siigoCredentials.apiUser || !siigoCredentials.accessKey || !siigoCredentials.applicationType) {
+      if (!siigoForm.apiUser || !siigoForm.accessKey || !siigoForm.applicationType) {
         alert('Todos los campos son requeridos');
         setLoading(false);
         return;
       }
 
       let response;
-      if (siigoCredentials.id) {
+      if (siigoForm.id) {
         // Actualizar credenciales existentes
         response = await fetch('/api/siigo-credentials', {
           method: 'PUT',
@@ -197,10 +234,10 @@ export default function ConfiguracionPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: siigoCredentials.id,
-            apiUser: siigoCredentials.apiUser,
-            accessKey: siigoCredentials.accessKey,
-            applicationType: siigoCredentials.applicationType
+            id: siigoForm.id,
+            apiUser: siigoForm.apiUser,
+            accessKey: siigoForm.accessKey,
+            applicationType: siigoForm.applicationType
           }),
         });
       } else {
@@ -211,9 +248,9 @@ export default function ConfiguracionPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            apiUser: siigoCredentials.apiUser,
-            accessKey: siigoCredentials.accessKey,
-            applicationType: siigoCredentials.applicationType
+            apiUser: siigoForm.apiUser,
+            accessKey: siigoForm.accessKey,
+            applicationType: siigoForm.applicationType
           }),
         });
       }
@@ -221,7 +258,13 @@ export default function ConfiguracionPage() {
       const result = await response.json();
 
       if (result.success) {
-        setSiigoCredentials(result.data.credentials);
+        // Actualizar ambos estados después de guardar exitosamente
+        const displayCredentials = {
+          ...result.data.credentials,
+          accessKey: '••••••••••••••••••••••••••••••••'
+        };
+        setSiigoCredentials(displayCredentials);
+        setSiigoForm(result.data.credentials);
         setIsEditingSiigo(false);
         console.log('Credenciales SIIGO guardadas exitosamente');
         // Aquí podrías mostrar un toast de éxito
@@ -237,9 +280,10 @@ export default function ConfiguracionPage() {
     }
   };
 
-  const handleSiigoCancel = () => {
+  const handleSiigoCancel = async () => {
     setIsEditingSiigo(false);
-    loadSiigoCredentials(); // Restaurar valores originales
+    // Recargar las credenciales para restaurar el estado
+    await loadSiigoCredentials();
   };
 
   const handleEditUser = (user: User) => {
@@ -638,7 +682,11 @@ export default function ConfiguracionPage() {
                   </div>
                   {!isEditingSiigo && (
                     <Button 
-                      onClick={() => setIsEditingSiigo(true)}
+                      onClick={async () => {
+                        // Cargar los valores reales para el formulario
+                        await loadSiigoCredentials(true);
+                        setIsEditingSiigo(true);
+                      }}
                       className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
                     >
                       {siigoCredentials.id ? (
@@ -666,8 +714,8 @@ export default function ConfiguracionPage() {
                           <Label htmlFor="apiUser">Usuario API</Label>
                           <Input
                             id="apiUser"
-                            value={siigoCredentials.apiUser}
-                            onChange={(e) => setSiigoCredentials(prev => ({
+                            value={siigoForm.apiUser}
+                            onChange={(e) => setSiigoForm(prev => ({
                               ...prev,
                               apiUser: e.target.value
                             }))}
@@ -680,8 +728,8 @@ export default function ConfiguracionPage() {
                           <Input
                             id="accessKey"
                             type="password"
-                            value={siigoCredentials.accessKey}
-                            onChange={(e) => setSiigoCredentials(prev => ({
+                            value={siigoForm.accessKey}
+                            onChange={(e) => setSiigoForm(prev => ({
                               ...prev,
                               accessKey: e.target.value
                             }))}
@@ -694,8 +742,8 @@ export default function ConfiguracionPage() {
                         <Label htmlFor="applicationType">Tipo de Aplicación</Label>
                         <Input
                           id="applicationType"
-                          value={siigoCredentials.applicationType}
-                          onChange={(e) => setSiigoCredentials(prev => ({
+                          value={siigoForm.applicationType}
+                          onChange={(e) => setSiigoForm(prev => ({
                             ...prev,
                             applicationType: e.target.value
                           }))}
@@ -762,7 +810,14 @@ export default function ConfiguracionPage() {
                             Configura las credenciales de SIIGO para habilitar la integración con el ERP.
                           </p>
                           <Button 
-                            onClick={() => setIsEditingSiigo(true)}
+                            onClick={() => {
+                              setSiigoForm({
+                                apiUser: '',
+                                accessKey: '',
+                                applicationType: 'production'
+                              });
+                              setIsEditingSiigo(true);
+                            }}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <Plus className="h-4 w-4 mr-2" />

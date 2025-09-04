@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 // GET - Obtener credenciales SIIGO
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const includeRealKey = searchParams.get('includeRealKey') === 'true';
+
     const credentials = await prisma.siigoCredentials.findFirst({
       where: {
         isActive: true
@@ -22,16 +25,18 @@ export async function GET() {
       });
     }
 
-    // Ocultar la access key para seguridad
-    const safeCredentials = {
-      ...credentials,
-      accessKey: credentials.accessKey ? '••••••••••••••••••••••••••••••••' : ''
-    };
+    // Si se solicita la clave real (para edición), devolverla sin enmascarar
+    const responseCredentials = includeRealKey 
+      ? credentials 
+      : {
+          ...credentials,
+          accessKey: credentials.accessKey ? '••••••••••••••••••••••••••••••••' : ''
+        };
 
     return NextResponse.json({
       success: true,
       data: {
-        credentials: safeCredentials
+        credentials: responseCredentials
       }
     });
   } catch (error) {
