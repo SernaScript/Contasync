@@ -23,7 +23,7 @@ const mainNavigation = [
   },
   {
     name: "Descarga de Facturas",
-    href: "/services/dian-downloads",
+    href: "/invoice-downloads",
     icon: Download,
   },
   {
