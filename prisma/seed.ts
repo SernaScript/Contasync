@@ -6,202 +6,97 @@ import { hashPassword } from '../src/lib/auth'
 
 const prisma = new PrismaClient()
 
+console.log('Debug PermissionAction:', PermissionAction)
+console.log('Debug DOWNLOAD:', PermissionAction.DOWNLOAD)
+
 // Test user credentials - CHANGE IN PRODUCTION!
 const TEST_USERS = [
   {
-    email: 'superadmin@tyvg.com',
-    password: 'SuperAdmin2024!',
-    name: 'Super Administrador',
-    role: RoleName.SUPER_ADMIN
-  },
-  {
-    email: 'admin@tyvg.com',
+    email: 'admin@contasync.com',
     password: 'Admin2024!',
-    name: 'Administrador General',
+    name: 'System Administrator',
     role: RoleName.ADMIN
   },
   {
-    email: 'contabilidad@tyvg.com',
-    password: 'Conta2024!',
-    name: 'Usuario Contabilidad',
-    role: RoleName.ACCOUNTING
+    email: 'accountant@contasync.com',
+    password: 'Accountant2024!',
+    name: 'Senior Accountant',
+    role: RoleName.ACCOUNTANT
   },
   {
-    email: 'tesoreria@tyvg.com',
-    password: 'Tesoro2024!',
-    name: 'Usuario Tesorería',
-    role: RoleName.TREASURY
-  },
-  {
-    email: 'logistica@tyvg.com',
-    password: 'Logis2024!',
-    name: 'Usuario Logística',
-    role: RoleName.LOGISTICS
-  },
-  {
-    email: 'facturacion@tyvg.com',
-    password: 'Factura2024!',
-    name: 'Usuario Facturación',
-    role: RoleName.BILLING
-  },
-  {
-    email: 'viewer@tyvg.com',
-    password: 'Viewer2024!',
-    name: 'Usuario Solo Lectura',
-    role: RoleName.VIEWER
+    email: 'assistant@contasync.com',
+    password: 'Assistant2024!',
+    name: 'Accounting Assistant',
+    role: RoleName.ACCOUNTING_ASSISTANT
   }
 ]
 
 const ROLES_DATA = [
   {
-    name: RoleName.SUPER_ADMIN,
-    displayName: 'Super Administrador',
-    description: 'Acceso completo a todo el sistema, incluyendo gestión de usuarios y configuración'
-  },
-  {
     name: RoleName.ADMIN,
-    displayName: 'Administrador',
-    description: 'Acceso administrativo a todas las áreas de negocio'
+    displayName: 'Administrator',
+    description: 'Full system access including user management and system configuration'
   },
   {
-    name: RoleName.ACCOUNTING,
-    displayName: 'Contabilidad',
-    description: 'Acceso completo al área de contabilidad y visualización de reportes'
+    name: RoleName.ACCOUNTANT,
+    displayName: 'Accountant',
+    description: 'Access to review invoices and generate reports'
   },
   {
-    name: RoleName.TREASURY,
-    displayName: 'Tesorería',
-    description: 'Acceso completo al área de tesorería y gestión de flujo de efectivo'
-  },
-  {
-    name: RoleName.LOGISTICS,
-    displayName: 'Logística',
-    description: 'Acceso completo al área de logística e inventarios'
-  },
-  {
-    name: RoleName.BILLING,
-    displayName: 'Facturación',
-    description: 'Acceso completo al área de facturación y gestión de clientes'
-  },
-  {
-    name: RoleName.VIEWER,
-    displayName: 'Solo Lectura',
-    description: 'Acceso de solo lectura a todas las áreas'
+    name: RoleName.ACCOUNTING_ASSISTANT,
+    displayName: 'Accounting Assistant',
+    description: 'Access to view invoices and perform bulk downloads'
   }
 ]
 
 const PERMISSIONS_DATA = [
   // Dashboard permissions
-  { name: 'dashboard:view', resource: 'dashboard', action: PermissionAction.VIEW, description: 'Ver dashboard principal' },
+  { name: 'dashboard:view', resource: 'dashboard', action: PermissionAction.VIEW, description: 'View main dashboard' },
   
-  // Accounting permissions
-  { name: 'accounting:view', resource: 'accounting', action: PermissionAction.VIEW, description: 'Ver área de contabilidad' },
-  { name: 'accounting:edit', resource: 'accounting', action: PermissionAction.EDIT, description: 'Editar datos contables' },
-  { name: 'accounting:create', resource: 'accounting', action: PermissionAction.CREATE, description: 'Crear registros contables' },
-  { name: 'accounting:delete', resource: 'accounting', action: PermissionAction.DELETE, description: 'Eliminar registros contables' },
-  { name: 'accounting:manage', resource: 'accounting', action: PermissionAction.MANAGE, description: 'Gestión completa de contabilidad' },
-  
-  // Treasury permissions
-  { name: 'treasury:view', resource: 'treasury', action: PermissionAction.VIEW, description: 'Ver área de tesorería' },
-  { name: 'treasury:edit', resource: 'treasury', action: PermissionAction.EDIT, description: 'Editar datos de tesorería' },
-  { name: 'treasury:create', resource: 'treasury', action: PermissionAction.CREATE, description: 'Crear registros de tesorería' },
-  { name: 'treasury:delete', resource: 'treasury', action: PermissionAction.DELETE, description: 'Eliminar registros de tesorería' },
-  { name: 'treasury:manage', resource: 'treasury', action: PermissionAction.MANAGE, description: 'Gestión completa de tesorería' },
-  
-  // Logistics permissions
-  { name: 'logistics:view', resource: 'logistics', action: PermissionAction.VIEW, description: 'Ver área de logística' },
-  { name: 'logistics:edit', resource: 'logistics', action: PermissionAction.EDIT, description: 'Editar datos logísticos' },
-  { name: 'logistics:create', resource: 'logistics', action: PermissionAction.CREATE, description: 'Crear registros logísticos' },
-  { name: 'logistics:delete', resource: 'logistics', action: PermissionAction.DELETE, description: 'Eliminar registros logísticos' },
-  { name: 'logistics:manage', resource: 'logistics', action: PermissionAction.MANAGE, description: 'Gestión completa de logística' },
-  
-  // Billing permissions
-  { name: 'billing:view', resource: 'billing', action: PermissionAction.VIEW, description: 'Ver área de facturación' },
-  { name: 'billing:edit', resource: 'billing', action: PermissionAction.EDIT, description: 'Editar datos de facturación' },
-  { name: 'billing:create', resource: 'billing', action: PermissionAction.CREATE, description: 'Crear facturas' },
-  { name: 'billing:delete', resource: 'billing', action: PermissionAction.DELETE, description: 'Eliminar facturas' },
-  { name: 'billing:manage', resource: 'billing', action: PermissionAction.MANAGE, description: 'Gestión completa de facturación' },
+  // Invoice permissions
+  { name: 'invoices:view', resource: 'invoices', action: PermissionAction.VIEW, description: 'View invoices' },
+  { name: 'invoices:create', resource: 'invoices', action: PermissionAction.CREATE, description: 'Create invoices' },
+  { name: 'invoices:edit', resource: 'invoices', action: PermissionAction.EDIT, description: 'Edit invoices' },
+  { name: 'invoices:delete', resource: 'invoices', action: PermissionAction.DELETE, description: 'Delete invoices' },
+  { name: 'invoices:download', resource: 'invoices', action: 'DOWNLOAD', description: 'Download invoices in bulk' },
+  { name: 'invoices:manage', resource: 'invoices', action: PermissionAction.MANAGE, description: 'Full invoice management' },
   
   // Reports permissions
-  { name: 'reports:view', resource: 'reports', action: PermissionAction.VIEW, description: 'Ver reportes' },
-  { name: 'reports:create', resource: 'reports', action: PermissionAction.CREATE, description: 'Crear reportes' },
-  { name: 'reports:manage', resource: 'reports', action: PermissionAction.MANAGE, description: 'Gestión completa de reportes' },
+  { name: 'reports:view', resource: 'reports', action: PermissionAction.VIEW, description: 'View reports' },
+  { name: 'reports:create', resource: 'reports', action: PermissionAction.CREATE, description: 'Create reports' },
+  { name: 'reports:manage', resource: 'reports', action: PermissionAction.MANAGE, description: 'Full report management' },
   
   // Users permissions
-  { name: 'users:view', resource: 'users', action: PermissionAction.VIEW, description: 'Ver usuarios' },
-  { name: 'users:edit', resource: 'users', action: PermissionAction.EDIT, description: 'Editar usuarios' },
-  { name: 'users:create', resource: 'users', action: PermissionAction.CREATE, description: 'Crear usuarios' },
-  { name: 'users:delete', resource: 'users', action: PermissionAction.DELETE, description: 'Eliminar usuarios' },
-  { name: 'users:manage', resource: 'users', action: PermissionAction.MANAGE, description: 'Gestión completa de usuarios' },
-  
-  // Roles permissions
-  { name: 'roles:view', resource: 'roles', action: PermissionAction.VIEW, description: 'Ver roles' },
-  { name: 'roles:edit', resource: 'roles', action: PermissionAction.EDIT, description: 'Editar roles' },
-  { name: 'roles:create', resource: 'roles', action: PermissionAction.CREATE, description: 'Crear roles' },
-  { name: 'roles:delete', resource: 'roles', action: PermissionAction.DELETE, description: 'Eliminar roles' },
-  { name: 'roles:manage', resource: 'roles', action: PermissionAction.MANAGE, description: 'Gestión completa de roles' },
+  { name: 'users:view', resource: 'users', action: PermissionAction.VIEW, description: 'View users' },
+  { name: 'users:edit', resource: 'users', action: PermissionAction.EDIT, description: 'Edit users' },
+  { name: 'users:create', resource: 'users', action: PermissionAction.CREATE, description: 'Create users' },
+  { name: 'users:delete', resource: 'users', action: PermissionAction.DELETE, description: 'Delete users' },
+  { name: 'users:manage', resource: 'users', action: PermissionAction.MANAGE, description: 'Full user management' },
   
   // Settings permissions
-  { name: 'settings:view', resource: 'settings', action: PermissionAction.VIEW, description: 'Ver configuración' },
-  { name: 'settings:edit', resource: 'settings', action: PermissionAction.EDIT, description: 'Editar configuración' },
-  { name: 'settings:manage', resource: 'settings', action: PermissionAction.MANAGE, description: 'Gestión completa de configuración' }
+  { name: 'settings:view', resource: 'settings', action: PermissionAction.VIEW, description: 'View settings' },
+  { name: 'settings:edit', resource: 'settings', action: PermissionAction.EDIT, description: 'Edit settings' },
+  { name: 'settings:manage', resource: 'settings', action: PermissionAction.MANAGE, description: 'Full settings management' }
 ]
 
 // Role-Permission mappings
 const ROLE_PERMISSIONS_MAPPING = {
-  [RoleName.SUPER_ADMIN]: [
-    'dashboard:view',
-    'accounting:manage',
-    'treasury:manage',
-    'logistics:manage',
-    'billing:manage',
-    'reports:manage',
-    'users:manage',
-    'roles:manage',
-    'settings:manage'
-  ],
   [RoleName.ADMIN]: [
     'dashboard:view',
-    'accounting:manage',
-    'treasury:manage',
-    'logistics:manage',
-    'billing:manage',
-    'reports:view',
-    'users:view'
+    'invoices:manage',
+    'reports:manage',
+    'users:manage',
+    'settings:manage'
   ],
-  [RoleName.ACCOUNTING]: [
+  [RoleName.ACCOUNTANT]: [
     'dashboard:view',
-    'accounting:manage',
-    'reports:view',
-    'treasury:view',
-    'billing:view'
-  ],
-  [RoleName.TREASURY]: [
-    'dashboard:view',
-    'treasury:manage',
-    'reports:view',
-    'accounting:view',
-    'billing:view'
-  ],
-  [RoleName.LOGISTICS]: [
-    'dashboard:view',
-    'logistics:manage',
-    'reports:view',
-    'billing:view'
-  ],
-  [RoleName.BILLING]: [
-    'dashboard:view',
-    'billing:manage',
-    'reports:view',
-    'accounting:view'
-  ],
-  [RoleName.VIEWER]: [
-    'dashboard:view',
-    'accounting:view',
-    'treasury:view',
-    'logistics:view',
-    'billing:view',
+    'invoices:view',
     'reports:view'
+  ],
+  [RoleName.ACCOUNTING_ASSISTANT]: [
+    'dashboard:view',
+    'invoices:view',
+    'invoices:download'
   ]
 }
 
@@ -213,6 +108,7 @@ async function main() {
   const createdPermissions = new Map<string, string>()
   
   for (const permission of PERMISSIONS_DATA) {
+    console.log(`Debug: ${permission.name} - action: ${permission.action}`)
     const created = await prisma.permission.upsert({
       where: { name: permission.name },
       update: permission,
@@ -315,4 +211,3 @@ main()
     await prisma.$disconnect()
     process.exit(1)
   })
-

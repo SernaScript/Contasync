@@ -30,13 +30,9 @@ export interface Permission {
 }
 
 export enum RoleName {
-  SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
-  ACCOUNTING = 'ACCOUNTING',
-  TREASURY = 'TREASURY',
-  LOGISTICS = 'LOGISTICS',
-  BILLING = 'BILLING',
-  VIEWER = 'VIEWER'
+  ACCOUNTANT = 'ACCOUNTANT',
+  ACCOUNTING_ASSISTANT = 'ACCOUNTING_ASSISTANT'
 }
 
 export enum PermissionAction {
@@ -44,7 +40,8 @@ export enum PermissionAction {
   CREATE = 'CREATE',
   EDIT = 'EDIT',
   DELETE = 'DELETE',
-  MANAGE = 'MANAGE'
+  MANAGE = 'MANAGE',
+  DOWNLOAD = 'DOWNLOAD'
 }
 
 export interface LoginCredentials {
@@ -106,118 +103,61 @@ export interface ModulePermission {
 
 // Default role permissions configuration
 export const ROLE_PERMISSIONS_CONFIG: Record<RoleName, string[]> = {
-  [RoleName.SUPER_ADMIN]: [
-    'accounting:MANAGE',
-    'treasury:MANAGE',
-    'logistics:MANAGE',
-    'billing:MANAGE',
-    'users:MANAGE',
-    'roles:MANAGE',
-    'settings:MANAGE',
-    'reports:MANAGE'
-  ],
   [RoleName.ADMIN]: [
-    'accounting:MANAGE',
-    'treasury:MANAGE',
-    'logistics:MANAGE',
-    'billing:MANAGE',
-    'reports:VIEW',
-    'users:VIEW'
+    'invoices:MANAGE',
+    'reports:MANAGE',
+    'users:MANAGE',
+    'settings:MANAGE',
+    'dashboard:VIEW'
   ],
-  [RoleName.ACCOUNTING]: [
-    'accounting:MANAGE',
+  [RoleName.ACCOUNTANT]: [
+    'invoices:VIEW',
     'reports:VIEW',
-    'treasury:VIEW',
-    'billing:VIEW'
+    'dashboard:VIEW'
   ],
-  [RoleName.TREASURY]: [
-    'treasury:MANAGE',
-    'reports:VIEW',
-    'accounting:VIEW',
-    'billing:VIEW'
-  ],
-  [RoleName.LOGISTICS]: [
-    'logistics:MANAGE',
-    'reports:VIEW',
-    'billing:VIEW'
-  ],
-  [RoleName.BILLING]: [
-    'billing:MANAGE',
-    'reports:VIEW',
-    'accounting:VIEW'
-  ],
-  [RoleName.VIEWER]: [
-    'accounting:VIEW',
-    'treasury:VIEW',
-    'logistics:VIEW',
-    'billing:VIEW',
-    'reports:VIEW'
+  [RoleName.ACCOUNTING_ASSISTANT]: [
+    'invoices:VIEW',
+    'invoices:DOWNLOAD',
+    'dashboard:VIEW'
   ]
 }
 
 // Area-specific permissions mapping
 export const AREA_PERMISSIONS_MAP: Record<string, AreaPermission> = {
-  accounting: {
-    areaId: 'accounting',
-    displayName: 'Contabilidad',
+  invoices: {
+    areaId: 'invoices',
+    displayName: 'Invoice Management',
     requiredPermission: {
-      resource: 'accounting',
+      resource: 'invoices',
       action: PermissionAction.VIEW
     },
     modules: [
       {
-        moduleId: 'f2x-automation',
-        displayName: 'Automatización F2X',
+        moduleId: 'bulk-download',
+        displayName: 'Bulk Download',
         requiredPermission: {
-          resource: 'accounting',
-          action: PermissionAction.EDIT
-        }
-      },
-      {
-        moduleId: 'reconciliation',
-        displayName: 'Conciliación Bancaria',
-        requiredPermission: {
-          resource: 'accounting',
-          action: PermissionAction.EDIT
+          resource: 'invoices',
+          action: PermissionAction.DOWNLOAD
         }
       }
     ]
   },
-  treasury: {
-    areaId: 'treasury',
-    displayName: 'Tesorería',
+  reports: {
+    areaId: 'reports',
+    displayName: 'Reports',
     requiredPermission: {
-      resource: 'treasury',
-      action: PermissionAction.VIEW
-    },
-    modules: [
-      {
-        moduleId: 'portfolio',
-        displayName: 'Gestión de Cartera',
-        requiredPermission: {
-          resource: 'treasury',
-          action: PermissionAction.EDIT
-        }
-      }
-    ]
-  },
-  logistics: {
-    areaId: 'logistics',
-    displayName: 'Logística',
-    requiredPermission: {
-      resource: 'logistics',
+      resource: 'reports',
       action: PermissionAction.VIEW
     },
     modules: []
   },
-  billing: {
-    areaId: 'billing',
-    displayName: 'Facturación',
+  users: {
+    areaId: 'users',
+    displayName: 'User Management',
     requiredPermission: {
-      resource: 'billing',
-      action: PermissionAction.VIEW
+      resource: 'users',
+      action: PermissionAction.MANAGE
     },
     modules: []
   }
 }
-
