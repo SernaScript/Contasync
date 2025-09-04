@@ -68,12 +68,13 @@ export async function middleware(request: NextRequest) {
   
   console.log(`🔒 Middleware processing: ${pathname}`)
 
-  // Skip middleware for static files and API routes (except auth)
+  // Skip middleware for static files and API routes
   if (
     pathname.startsWith('/_next/') ||
-    pathname.startsWith('/api/') && !pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/') ||
     pathname.includes('.') // Static files
   ) {
+    console.log(`⏭️ Skipping middleware for: ${pathname}`)
     return NextResponse.next()
   }
 
@@ -126,7 +127,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // Temporarily disable middleware to test API routes
+    // '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }
 

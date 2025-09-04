@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
         isActive: true
       },
       include: {
-        permissions: {
+        rolePermissions: {
           include: {
             permission: {
               select: {
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       displayName: role.displayName,
       description: role.description,
       isActive: role.isActive,
-      permissions: role.permissions.map(rp => rp.permission)
+      permissions: role.rolePermissions.map(rp => rp.permission)
     }));
 
     return NextResponse.json({
