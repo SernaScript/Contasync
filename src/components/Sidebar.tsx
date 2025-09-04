@@ -36,11 +36,7 @@ const mainNavigation = [
     href: "/reports",
     icon: BarChart3,
   },
-  {
-    name: "Usuarios",
-    href: "/users",
-    icon: Users,
-  },
+  
   {
     name: "Base de Datos",
     href: "/database",
@@ -62,7 +58,7 @@ export function Sidebar() {
         {/* Logo/Header */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Sistema TYVG
+            Contasync
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Panel de Control
