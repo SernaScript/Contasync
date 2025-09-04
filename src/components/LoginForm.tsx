@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LoadingButton } from "@/components/ui/loading"
+import { LoadingButton } from "@/components/ui/loading-button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { 
   CheckCircle, 
@@ -174,12 +174,14 @@ export function LoginForm({ onSubmit, title = "Formulario de Acceso" }: LoginFor
             />
           </div>
 
-          {/* Checkbox para procesar en base de datos */}
+          {}
           <div className="flex items-center space-x-2">
+            
             <Checkbox
               id="processToDatabase"
               checked={formData.processToDatabase}
-              onCheckedChange={(checked) => handleInputChange('processToDatabase', checked as boolean)}
+              
+              onCheckedChange={(checked : boolean) => handleInputChange('processToDatabase', checked as boolean)}
             />
             <Label htmlFor="processToDatabase" className="flex items-center gap-2 text-sm">
               <Database className="h-4 w-4" />

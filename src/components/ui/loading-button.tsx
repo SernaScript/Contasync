@@ -1,13 +1,15 @@
 import * as React from "react"
-import { Button, type ButtonProps } from "./button"
+import { Button, buttonVariants, type VariantProps } from "./button"
 import { LoadingSpinner } from "./loading-spinner"
 import { cn } from "@/lib/utils"
 
-export interface LoadingButtonProps extends ButtonProps {
+export interface LoadingButtonProps 
+  extends React.ComponentProps<"button">,
+    VariantProps<typeof buttonVariants> {
   isLoading?: boolean
   loadingText?: string
   loadingSpinnerSize?: "sm" | "default" | "lg" | "xl" | "2xl"
-  children: React.ReactNode
+  asChild?: boolean
 }
 
 const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonProps>(
@@ -18,6 +20,9 @@ const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonProps>(
     children, 
     disabled, 
     className,
+    size,
+    variant,
+    asChild,
     ...props 
   }, ref) => {
     const isDisabled = disabled || isLoading
@@ -26,6 +31,9 @@ const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonProps>(
       <Button
         ref={ref}
         disabled={isDisabled}
+        size={size}
+        variant={variant}
+        asChild={asChild}
         className={cn(
           "relative",
           isLoading && "cursor-not-allowed",
