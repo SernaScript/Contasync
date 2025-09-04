@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Settings, 
@@ -72,6 +73,13 @@ export default function ConfiguracionPage() {
     applicationType: ''
   });
   const [isEditingSiigo, setIsEditingSiigo] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditingUser, setIsEditingUser] = useState(false);
+  const [userForm, setUserForm] = useState({
+    name: '',
+    email: '',
+    isActive: true
+  });
 
   const loadRoles = async () => {
     setLoading(true);
@@ -159,6 +167,93 @@ export default function ConfiguracionPage() {
   const handleSiigoCancel = () => {
     setIsEditingSiigo(false);
     loadSiigoCredentials(); // Restaurar valores originales
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserForm({
+      name: user.name,
+      email: user.email,
+      isActive: user.isActive
+    });
+    setIsEditingUser(true);
+  };
+
+  const handleUserSave = async () => {
+    if (!editingUser) return;
+
+    try {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: userForm.name,
+          email: userForm.email,
+          isActive: userForm.isActive
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Actualizar la lista de usuarios
+        setUsers(users.map(user => 
+          user.id === editingUser.id 
+            ? { ...user, ...userForm }
+            : user
+        ));
+        setIsEditingUser(false);
+        setEditingUser(null);
+        // Mostrar mensaje de éxito
+        console.log('Usuario actualizado exitosamente');
+      } else {
+        console.error('Error actualizando usuario:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleUserCancel = () => {
+    setIsEditingUser(false);
+    setEditingUser(null);
+    setUserForm({
+      name: '',
+      email: '',
+      isActive: true
+    });
+  };
+
+  const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isActive: !currentStatus
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Actualizar la lista de usuarios
+        setUsers(users.map(user => 
+          user.id === userId 
+            ? { ...user, isActive: !currentStatus }
+            : user
+        ));
+        console.log(`Usuario ${!currentStatus ? 'activado' : 'desactivado'} exitosamente`);
+      } else {
+        console.error('Error actualizando estado del usuario:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const getRoleColor = (roleName: string) => {
@@ -352,11 +447,20 @@ export default function ConfiguracionPage() {
                               Creado: {formatDate(user.createdAt)}
                             </p>
                             <div className="flex gap-2 mt-2">
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleEditUser(user)}
+                              >
                                 <Edit className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
-                                <Trash2 className="h-3 w-3" />
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className={user.isActive ? "text-orange-600 hover:text-orange-700" : "text-green-600 hover:text-green-700"}
+                                onClick={() => handleToggleUserStatus(user.id, user.isActive)}
+                              >
+                                {user.isActive ? 'Desactivar' : 'Activar'}
                               </Button>
                             </div>
                           </div>
@@ -367,6 +471,73 @@ export default function ConfiguracionPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Modal de Edición de Usuario */}
+            {isEditingUser && editingUser && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle>Editar Usuario</CardTitle>
+                  <CardDescription>
+                    Modifica la información del usuario: {editingUser.name}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="userName">Nombre</Label>
+                        <Input
+                          id="userName"
+                          value={userForm.name}
+                          onChange={(e) => setUserForm(prev => ({
+                            ...prev,
+                            name: e.target.value
+                          }))}
+                          placeholder="Nombre del usuario"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="userEmail">Email</Label>
+                        <Input
+                          id="userEmail"
+                          type="email"
+                          value={userForm.email}
+                          onChange={(e) => setUserForm(prev => ({
+                            ...prev,
+                            email: e.target.value
+                          }))}
+                          placeholder="Email del usuario"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="userActive"
+                        checked={userForm.isActive}
+                        onCheckedChange={(checked) => setUserForm(prev => ({
+                          ...prev,
+                          isActive: checked as boolean
+                        }))}
+                      />
+                      <Label htmlFor="userActive">Usuario activo</Label>
+                    </div>
+                    
+                    <div className="flex gap-2 pt-4">
+                      <Button onClick={handleUserSave} className="bg-green-600 hover:bg-green-700">
+                        <Save className="h-4 w-4 mr-2" />
+                        Guardar Cambios
+                      </Button>
+                      <Button onClick={handleUserCancel} variant="outline">
+                        <X className="h-4 w-4 mr-2" />
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Tab de Integraciones */}
