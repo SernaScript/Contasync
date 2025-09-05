@@ -12,7 +12,8 @@ import {
   Users,
   Database,
   Download,
-  FileText
+  FileText,
+  CreditCard
 } from "lucide-react"
 
 const mainNavigation = [
@@ -36,7 +37,11 @@ const mainNavigation = [
     href: "/reports",
     icon: BarChart3,
   },
-  
+  {
+    name: "Planes",
+    href: "/plans",
+    icon: CreditCard,
+  },
   {
     name: "Base de Datos",
     href: "/database",
