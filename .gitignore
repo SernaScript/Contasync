@@ -42,3 +42,5 @@ next-env.d.ts
 
 # downloads
 /downloads/
+
+CODING_STANDARDS.md
