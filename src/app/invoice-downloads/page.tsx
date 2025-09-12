@@ -56,6 +56,17 @@ interface DownloadedFile {
   size: number;
   downloadPath: string;
   downloadDate: string;
+  processedFiles?: ProcessedFile[];
+  isProcessed?: boolean;
+}
+
+interface ProcessedFile {
+  originalName: string;
+  extractedName: string;
+  fileType: 'xml' | 'pdf' | 'other';
+  size: number;
+  path: string;
+  extractedDate: string;
 }
 
 export default function InvoiceDownloadsPage() {
@@ -73,6 +84,7 @@ export default function InvoiceDownloadsPage() {
   });
   const [scrapingResult, setScrapingResult] = useState<ScrapingResult | null>(null);
   const [isScraping, setIsScraping] = useState(false);
+  const [processedFiles, setProcessedFiles] = useState<ProcessedFile[]>([]);
 
   const handleDownloadInvoices = async () => {
     setIsDownloading(true);
@@ -166,15 +178,24 @@ export default function InvoiceDownloadsPage() {
         // Convert scraping results to invoice downloads format
         const convertedDownloads: InvoiceDownload[] = result.data.downloadedFiles.map((file: DownloadedFile, index: number) => ({
           id: (index + 1).toString(),
-          invoiceNumber: file.filename.replace('.pdf', '').replace('.xml', ''),
+          invoiceNumber: file.filename.replace('.pdf', '').replace('.xml', '').replace('.zip', '').replace('.rar', ''),
           date: new Date(file.downloadDate).toISOString().split('T')[0],
           amount: 0, // Amount not available from scraping
-          status: 'downloaded' as const,
+          status: file.isProcessed ? 'downloaded' : 'pending' as const,
           customer: 'DIAN',
           type: 'Documento'
         }));
         
+        // Collect all processed files
+        const allProcessedFiles: ProcessedFile[] = [];
+        result.data.downloadedFiles.forEach((file: DownloadedFile) => {
+          if (file.processedFiles) {
+            allProcessedFiles.push(...file.processedFiles);
+          }
+        });
+        
         setDownloads(convertedDownloads);
+        setProcessedFiles(allProcessedFiles);
       } else {
         // Use the Spanish message if available, otherwise fall back to error
         const errorMessage = result.message || result.error || 'Error desconocido';
@@ -276,6 +297,10 @@ export default function InvoiceDownloadsPage() {
             <TabsTrigger value="scraping" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Configuración de Scraping
+            </TabsTrigger>
+            <TabsTrigger value="processed" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Archivos Procesados
             </TabsTrigger>
             <TabsTrigger value="visualization" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
@@ -500,6 +525,120 @@ export default function InvoiceDownloadsPage() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Processed Files Tab */}
+          <TabsContent value="processed" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Archivos Procesados</CardTitle>
+                <CardDescription>
+                  Archivos extraídos y clasificados por tipo (XML, PDF, otros)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {processedFiles.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No hay archivos procesados
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Los archivos procesados aparecerán aquí después de ejecutar el scraping
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">Archivos XML</span>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-900 mt-1">
+                          {processedFiles.filter(f => f.fileType === 'xml').length}
+                        </p>
+                      </div>
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-red-600" />
+                          <span className="text-sm font-medium text-red-900">Archivos PDF</span>
+                        </div>
+                        <p className="text-2xl font-bold text-red-900 mt-1">
+                          {processedFiles.filter(f => f.fileType === 'pdf').length}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-900">Otros Archivos</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">
+                          {processedFiles.filter(f => f.fileType === 'other').length}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* File List */}
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-medium">Lista de Archivos Procesados</h3>
+                      <div className="space-y-2">
+                        {processedFiles.map((file, index) => (
+                          <Card key={index} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                  file.fileType === 'xml' ? 'bg-blue-100' :
+                                  file.fileType === 'pdf' ? 'bg-red-100' : 'bg-gray-100'
+                                }`}>
+                                  <FileText className={`h-5 w-5 ${
+                                    file.fileType === 'xml' ? 'text-blue-600' :
+                                    file.fileType === 'pdf' ? 'text-red-600' : 'text-gray-600'
+                                  }`} />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-gray-900">
+                                    {file.extractedName}
+                                  </h4>
+                                  <p className="text-sm text-gray-600">
+                                    Extraído de: {file.originalName}
+                                  </p>
+                                  <div className="flex items-center gap-4 mt-1">
+                                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                      file.fileType === 'xml' ? 'bg-blue-100 text-blue-800' :
+                                      file.fileType === 'pdf' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {file.fileType.toUpperCase()}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {(file.size / 1024).toFixed(1)} KB
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(file.extractedDate).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline">
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Ver
+                                </Button>
+                                <Button size="sm" variant="outline">
+                                  <Download className="h-3 w-3 mr-1" />
+                                  Descargar
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

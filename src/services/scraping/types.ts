@@ -16,6 +16,17 @@ export interface DownloadedFile {
   size: number;
   downloadPath: string;
   downloadDate: string;
+  processedFiles?: ProcessedFile[];
+  isProcessed?: boolean;
+}
+
+export interface ProcessedFile {
+  originalName: string;
+  extractedName: string;
+  fileType: 'xml' | 'pdf' | 'other';
+  size: number;
+  path: string;
+  extractedDate: string;
 }
 
 export interface ScrapingProgress {

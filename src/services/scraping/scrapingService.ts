@@ -3,15 +3,18 @@ import fs from 'fs';
 import path from 'path';
 import { ScrapingConfig, defaultScrapingConfig } from './config';
 import { ScrapingRequest, ScrapingResult, DownloadedFile, ScrapingProgress } from './types';
+import { FileProcessor } from '../file-processing/fileProcessor';
 
 export class ScrapingService {
   private config: ScrapingConfig;
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
+  private fileProcessor: FileProcessor;
 
   constructor(config?: Partial<ScrapingConfig>) {
     this.config = { ...defaultScrapingConfig, ...config };
+    this.fileProcessor = new FileProcessor(path.join(this.config.downloadDirectory, 'processed'));
   }
 
   async initialize(): Promise<void> {
@@ -108,12 +111,16 @@ export class ScrapingService {
               console.log(`Descargando el archivo: ${filename} en ${this.config.downloadDirectory}`);
               
               const stats = fs.statSync(downloadPath);
-              downloadedFiles.push({
+              
+              // Process file immediately after download
+              const processedFile = await this.processSingleFile({
                 filename,
                 size: stats.size,
                 downloadPath,
                 downloadDate: new Date().toISOString()
               });
+              
+              downloadedFiles.push(processedFile);
               
               await this.page.waitForTimeout(this.config.timeouts.shortDelay);
             } else {
@@ -159,6 +166,49 @@ export class ScrapingService {
       fs.mkdirSync(downloadDirectory, { recursive: true });
     }
   }
+
+  private async processSingleFile(file: DownloadedFile): Promise<DownloadedFile> {
+    try {
+      console.log(`Procesando archivo inmediatamente: ${file.filename}`);
+      
+      // Check if file is a compressed file that needs extraction
+      const ext = path.extname(file.filename).toLowerCase();
+      const isCompressed = ['.zip', '.rar'].includes(ext);
+      
+      if (isCompressed) {
+        const result = await this.fileProcessor.processFile(file.downloadPath);
+        
+        if (result.success) {
+          console.log(`Archivo ${file.filename} procesado exitosamente. Extraídos: ${result.processedFiles.length} archivos`);
+          return {
+            ...file,
+            processedFiles: result.processedFiles,
+            isProcessed: true
+          };
+        } else {
+          console.error(`Error procesando ${file.filename}: ${result.message}`);
+          return {
+            ...file,
+            isProcessed: false
+          };
+        }
+      } else {
+        // For non-compressed files, just mark as processed
+        console.log(`Archivo ${file.filename} no requiere descompresión`);
+        return {
+          ...file,
+          isProcessed: true
+        };
+      }
+    } catch (error) {
+      console.error(`Error procesando archivo ${file.filename}:`, error);
+      return {
+        ...file,
+        isProcessed: false
+      };
+    }
+  }
+
 
   async runScraping(request: ScrapingRequest): Promise<ScrapingResult> {
     try {
@@ -237,14 +287,27 @@ export class ScrapingService {
       await this.page.waitForTimeout(this.config.timeouts.pageLoad);
       await this.closeMenuIfPresent();
 
-      // Process downloads
+      // Process downloads (with immediate processing)
       console.log('Iniciando el proceso de descarga de los documentos.');
       const downloadedFiles = await this.processTbodyDownloads();
       console.log(`Proceso de descarga completado. Total de archivos: ${downloadedFiles.length}`);
 
+      // Count processed files by type (files are already processed)
+      const totalProcessedFiles = downloadedFiles.reduce((total, file) => {
+        return total + (file.processedFiles?.length || 0);
+      }, 0);
+      
+      const xmlCount = downloadedFiles.reduce((total, file) => {
+        return total + (file.processedFiles?.filter(f => f.fileType === 'xml').length || 0);
+      }, 0);
+      
+      const pdfCount = downloadedFiles.reduce((total, file) => {
+        return total + (file.processedFiles?.filter(f => f.fileType === 'pdf').length || 0);
+      }, 0);
+
       return {
         success: true,
-        message: `Se han descargado ${downloadedFiles.length} archivos`,
+        message: `Se han descargado ${downloadedFiles.length} archivos y procesado ${totalProcessedFiles} archivos (${xmlCount} XML, ${pdfCount} PDF)`,
         downloadedFiles
       };
 
