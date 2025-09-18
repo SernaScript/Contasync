@@ -22,6 +22,7 @@ export interface ScrapingConfig {
     tbody: string;
     tableRows: string;
     downloadButton: string;
+    downloadButtonUUID: string; 
     emisorColumn: string;
     responseColumn: string;
     // Table column selectors
@@ -72,21 +73,22 @@ export const defaultScrapingConfig: ScrapingConfig = {
     tbody: "tbody",
     tableRows: "tbody tr",
     downloadButton: "td:first-child .fa-download",
+    downloadButtonUUID: "td:first-child button[data-id]", 
     emisorColumn: "td:nth-child(8)", 
     responseColumn: "td:nth-child(6)",
     // Table column selectors (based on HTML structure)
-    receptionColumn: "td:nth-child(2)",      // Recepción
-    documentDateColumn: "td:nth-child(3)",   // Fecha
-    prefixColumn: "td:nth-child(4)",         // Prefijo
-    documentNumberColumn: "td:nth-child(5)", // Nº documento
-    documentTypeColumn: "td:nth-child(6)",   // Tipo
-    senderNitColumn: "td:nth-child(7)",      // NIT Emisor
-    senderNameColumn: "td:nth-child(8)",     // Emisor
-    receiverNitColumn: "td:nth-child(9)",    // NIT Receptor
-    receiverNameColumn: "td:nth-child(10)",  // Receptor
-    resultColumn: "td:nth-child(11)",        // Resultado
-    radianStatusColumn: "td:nth-child(12)",  // Estado RADIAN
-    totalValueColumn: "td:nth-child(13)",    // Valor Total
+    receptionColumn: "td:nth-child(2)",      
+    documentDateColumn: "td:nth-child(3)",   
+    prefixColumn: "td:nth-child(4)",         
+    documentNumberColumn: "td:nth-child(5)", 
+    documentTypeColumn: "td:nth-child(6)",   
+    senderNitColumn: "td:nth-child(7)",      
+    senderNameColumn: "td:nth-child(8)",     
+    receiverNitColumn: "td:nth-child(9)",    
+    receiverNameColumn: "td:nth-child(10)", 
+    resultColumn: "td:nth-child(11)",        
+    radianStatusColumn: "td:nth-child(12)",  
+    totalValueColumn: "td:nth-child(13)",    
     nextButton: "#tableDocuments_next",
     dateRangePicker: "#dashboard-report-range",
     startDateInput: "input[name='daterangepicker_start']",

@@ -222,6 +222,7 @@ model SiigoCredentials {
 // Scraping Models
 model ScrapedDocument {
   id                String   @id @default(cuid())
+  documentUUID      String   @unique // UUID del botón de descarga (nombre del archivo)
   reception         String?  // Recepción
   documentDate      String?  // Fecha
   prefix            String?  // Prefijo

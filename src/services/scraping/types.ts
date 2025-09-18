@@ -28,6 +28,7 @@ export interface ScrapingProgress {
 }
 
 export interface ScrapedDocumentData {
+  documentUUID?: string; 
   reception?: string;
   documentDate?: string;
   prefix?: string;

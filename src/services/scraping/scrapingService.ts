@@ -98,6 +98,7 @@ export class ScrapingService {
           
           // Map all table columns
           const documentData: ScrapedDocumentData = {
+            documentUUID: await this.getDownloadButtonUUID(row),
             reception: await this.getCellText(row, this.config.selectors.receptionColumn),
             documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
             prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
@@ -113,7 +114,7 @@ export class ScrapingService {
           };
 
           mappedDocuments.push(documentData);
-          console.log(`Mapped document: ${documentData.documentNumber} - ${documentData.senderName}`);
+          console.log(`Mapped document: ${documentData.documentNumber} - ${documentData.senderName} - UUID: ${documentData.documentUUID || 'N/A'}`);
         } catch (e) {
           console.error(`Error mapping row ${i + 1}: ${e}`);
           continue;
@@ -170,6 +171,31 @@ export class ScrapingService {
     return undefined;
   }
 
+  private async getDownloadButtonUUID(row: any): Promise<string | undefined> {
+    try {
+      const downloadButton = row.locator(this.config.selectors.downloadButtonUUID);
+      if (await downloadButton.count() > 0) {
+        
+        const dataId = await downloadButton.getAttribute('data-id');
+        if (dataId) {
+          console.log(`Extracted data-id from download button: ${dataId}`);
+          return dataId;
+        }
+        
+        console.log(`No data-id found in download button. Available attributes:`, {
+          dataId: await downloadButton.getAttribute('data-id'),
+          id: await downloadButton.getAttribute('id'),
+          class: await downloadButton.getAttribute('class'),
+          onclick: await downloadButton.getAttribute('onclick'),
+          href: await downloadButton.getAttribute('href')
+        });
+      }
+    } catch (e) {
+      console.error(`Error getting download button data-id: ${e}`);
+    }
+    return undefined;
+  }
+
   private async saveDocumentsToDatabase(documents: ScrapedDocumentData[]): Promise<void> {
     try {
       console.log(`Saving ${documents.length} documents to database...`);
@@ -177,6 +203,7 @@ export class ScrapingService {
       for (const doc of documents) {
         await (this.prisma as any).scrapedDocument.create({
           data: {
+            documentUUID: doc.documentUUID || `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             reception: doc.reception,
             documentDate: doc.documentDate,
             prefix: doc.prefix,
@@ -219,17 +246,31 @@ export class ScrapingService {
 
   private async updateDocumentAsDownloaded(documentData: ScrapedDocumentData, downloadPath: string): Promise<void> {
     try {
-      await (this.prisma as any).scrapedDocument.updateMany({
-        where: {
-          documentNumber: documentData.documentNumber,
-          senderName: documentData.senderName
-        },
-        data: {
-          isDownloaded: true,
-          downloadPath: downloadPath,
-          downloadDate: new Date()
-        }
-      });
+      if (documentData.documentUUID) {
+        await (this.prisma as any).scrapedDocument.updateMany({
+          where: {
+            documentUUID: documentData.documentUUID
+          },
+          data: {
+            isDownloaded: true,
+            downloadPath: downloadPath,
+            downloadDate: new Date()
+          }
+        });
+      } else {
+        // Fallback to old method if UUID is not available
+        await (this.prisma as any).scrapedDocument.updateMany({
+          where: {
+            documentNumber: documentData.documentNumber,
+            senderName: documentData.senderName
+          },
+          data: {
+            isDownloaded: true,
+            downloadPath: downloadPath,
+            downloadDate: new Date()
+          }
+        });
+      }
     } catch (error) {
       console.error('Error updating document as downloaded:', error);
     }
@@ -256,6 +297,7 @@ export class ScrapingService {
           
           // Get document data for filtering
           const documentData: ScrapedDocumentData = {
+            documentUUID: await this.getDownloadButtonUUID(row),
             reception: await this.getCellText(row, this.config.selectors.receptionColumn),
             documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
             prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
@@ -281,7 +323,7 @@ export class ScrapingService {
           if (await downloadButton.count() > 0) {
             const downloadPromise = this.page.waitForEvent('download');
             await downloadButton.click();
-            console.log(`Clicked download button in row ${i + 1} - Document: ${documentData.documentNumber} - Sender: ${documentData.senderName}`);
+            console.log(`Clicked download button in row ${i + 1} - Document: ${documentData.documentNumber} - Sender: ${documentData.senderName} - UUID: ${documentData.documentUUID || 'N/A'}`);
 
             const download = await downloadPromise;
             const filename = download.suggestedFilename();
