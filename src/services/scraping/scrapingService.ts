@@ -77,74 +77,84 @@ export class ScrapingService {
     }
   }
 
-  private async mapTableData(): Promise<ScrapedDocumentData[]> {
+  private async mapCurrentPageData(): Promise<ScrapedDocumentData[]> {
     if (!this.page) throw new Error('Page not initialized');
 
     const mappedDocuments: ScrapedDocumentData[] = [];
-    let currentPage = 1;
 
-    while (true) {
-      try {
-        await this.page.waitForSelector(this.config.selectors.tbody, { 
-          timeout: this.config.timeouts.elementWait 
-        });
-        console.log("Mapping table data...");
+    try {
+      await this.page.waitForSelector(this.config.selectors.tbody, { 
+        timeout: this.config.timeouts.elementWait 
+      });
+      console.log("Mapping current page data...");
 
-        const rows = await this.page.locator(this.config.selectors.tableRows).all();
-        console.log(`Found ${rows.length} rows to map.`);
+      const rows = await this.page.locator(this.config.selectors.tableRows).all();
+      console.log(`Found ${rows.length} rows to map on current page.`);
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          try {
-            console.log(`Mapping row ${i + 1}...`);
-            
-            // Map all table columns
-            const documentData: ScrapedDocumentData = {
-              reception: await this.getCellText(row, this.config.selectors.receptionColumn),
-              documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
-              prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
-              documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
-              documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
-              senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
-              senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
-              receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
-              receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
-              result: await this.getCellText(row, this.config.selectors.resultColumn),
-              radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
-              totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
-            };
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          console.log(`Mapping row ${i + 1}...`);
+          
+          // Map all table columns
+          const documentData: ScrapedDocumentData = {
+            reception: await this.getCellText(row, this.config.selectors.receptionColumn),
+            documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
+            prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
+            documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
+            documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
+            senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
+            senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
+            receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
+            receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
+            result: await this.getCellText(row, this.config.selectors.resultColumn),
+            radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
+            totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
+          };
 
-            mappedDocuments.push(documentData);
-            console.log(`Mapped document: ${documentData.documentNumber} - ${documentData.senderName}`);
-          } catch (e) {
-            console.error(`Error mapping row ${i + 1}: ${e}`);
-            continue;
-          }
+          mappedDocuments.push(documentData);
+          console.log(`Mapped document: ${documentData.documentNumber} - ${documentData.senderName}`);
+        } catch (e) {
+          console.error(`Error mapping row ${i + 1}: ${e}`);
+          continue;
         }
-
-        // Check if there's a next page
-        const nextButton = this.page.locator(this.config.selectors.nextButton);
-        const isNextDisabled = await nextButton.getAttribute('class');
-        
-        if (isNextDisabled?.includes('disabled') || !(await nextButton.isVisible())) {
-          console.log("No more pages to map.");
-          break;
-        }
-
-        // Go to next page
-        console.log(`Going to page ${currentPage + 1}...`);
-        await nextButton.click();
-        await this.page.waitForTimeout(this.config.timeouts.longDelay);
-        currentPage++;
-        
-      } catch (e) {
-        console.error(`Error mapping page ${currentPage}: ${e}`);
-        break;
       }
-    }
 
-    console.log(`Total documents mapped: ${mappedDocuments.length}`);
-    return mappedDocuments;
+      console.log(`Mapped ${mappedDocuments.length} documents from current page.`);
+      return mappedDocuments;
+    } catch (e) {
+      console.error(`Error mapping current page: ${e}`);
+      return [];
+    }
+  }
+
+  private async hasNextPage(): Promise<boolean> {
+    if (!this.page) return false;
+
+    try {
+      const nextButton = this.page.locator(this.config.selectors.nextButton);
+      const isNextDisabled = await nextButton.getAttribute('class');
+      
+      return !isNextDisabled?.includes('disabled') && await nextButton.isVisible();
+    } catch (e) {
+      console.error(`Error checking next page: ${e}`);
+      return false;
+    }
+  }
+
+  private async goToNextPage(): Promise<boolean> {
+    if (!this.page) return false;
+
+    try {
+      const nextButton = this.page.locator(this.config.selectors.nextButton);
+      await nextButton.click();
+      await this.page.waitForTimeout(this.config.timeouts.longDelay);
+      await this.closeMenuIfPresent();
+      return true;
+    } catch (e) {
+      console.error(`Error going to next page: ${e}`);
+      return false;
+    }
   }
 
   private async getCellText(row: any, selector: string): Promise<string | undefined> {
@@ -198,9 +208,9 @@ export class ScrapingService {
       return true;
     }
 
-    // Filter 2: Skip if result contains "Application response"
-    if (documentData.result?.includes('Application response')) {
-      console.log(`Filtered out - Contains Application response: ${documentData.result}`);
+    // Filter 2: Skip if document type contains "Application response" (column 6)
+    if (documentData.documentType?.includes('Application response')) {
+      console.log(`Filtered out - Contains Application response: ${documentData.documentType}`);
       return true;
     }
 
@@ -225,110 +235,88 @@ export class ScrapingService {
     }
   }
 
-  private async processTbodyDownloads(): Promise<DownloadedFile[]> {
+  private async processCurrentPageDownloads(): Promise<DownloadedFile[]> {
     if (!this.page) throw new Error('Page not initialized');
 
     const downloadedFiles: DownloadedFile[] = [];
-    let currentPage = 1;
 
-    while (true) {
-      try {
-        await this.page.waitForSelector(this.config.selectors.tbody, { 
-          timeout: this.config.timeouts.elementWait 
-        });
-        console.log("tbody detected.");
+    try {
+      await this.page.waitForSelector(this.config.selectors.tbody, { 
+        timeout: this.config.timeouts.elementWait 
+      });
+      console.log("Processing downloads for current page...");
 
-        const rows = await this.page.locator(this.config.selectors.tableRows).all();
-        console.log(`Found ${rows.length} rows.`);
+      const rows = await this.page.locator(this.config.selectors.tableRows).all();
+      console.log(`Found ${rows.length} rows to process on current page.`);
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          try {
-            console.log(`Processing row ${i + 1}...`);
-            
-            // Get document data for filtering
-            const documentData: ScrapedDocumentData = {
-              reception: await this.getCellText(row, this.config.selectors.receptionColumn),
-              documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
-              prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
-              documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
-              documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
-              senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
-              senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
-              receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
-              receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
-              result: await this.getCellText(row, this.config.selectors.resultColumn),
-              radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
-              totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
-            };
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          console.log(`Processing row ${i + 1}...`);
+          
+          // Get document data for filtering
+          const documentData: ScrapedDocumentData = {
+            reception: await this.getCellText(row, this.config.selectors.receptionColumn),
+            documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
+            prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
+            documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
+            documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
+            senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
+            senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
+            receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
+            receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
+            result: await this.getCellText(row, this.config.selectors.resultColumn),
+            radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
+            totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
+          };
 
-            // Apply filters
-            if (this.shouldSkipDocument(documentData)) {
-              console.log(`Skipping row ${i + 1} - Document filtered out`);
-              continue;
-            }
-            
-            const downloadButton = row.locator(this.config.selectors.downloadButton);
-
-            if (await downloadButton.count() > 0) {
-              const downloadPromise = this.page.waitForEvent('download');
-              await downloadButton.click();
-              console.log(`Clicked download button in row ${i + 1} - Document: ${documentData.documentNumber} - Sender: ${documentData.senderName}`);
-
-              const download = await downloadPromise;
-              const filename = download.suggestedFilename();
-              const downloadPath = path.join(this.config.downloadDirectory, filename);
-              
-              await download.saveAs(downloadPath);
-              console.log(`Downloading file: ${filename} to ${this.config.downloadDirectory}`);
-              
-              // Update database record
-              await this.updateDocumentAsDownloaded(documentData, downloadPath);
-              
-              const stats = fs.statSync(downloadPath);
-              downloadedFiles.push({
-                filename,
-                size: stats.size,
-                downloadPath,
-                downloadDate: new Date().toISOString()
-              });
-              
-              await this.page.waitForTimeout(this.config.timeouts.shortDelay);
-            } else {
-              console.log(`Row ${i + 1}: Download button not found.`);
-            }
-          } catch (e) {
-            console.error(`Error processing row ${i + 1}: ${e}`);
+          // Apply filters
+          if (this.shouldSkipDocument(documentData)) {
+            console.log(`Skipping row ${i + 1} - Document filtered out`);
             continue;
           }
-        }
+          
+          const downloadButton = row.locator(this.config.selectors.downloadButton);
 
-        // Pagination logic
-        const nextButton = this.page.locator(this.config.selectors.nextButton);
-        if (await nextButton.count() > 0) {
-          const buttonClass = await nextButton.getAttribute("class");
-          if (!buttonClass || !buttonClass.includes("disabled")) {
-            await nextButton.click();
-            await this.page.waitForTimeout(this.config.timeouts.longDelay);
-            await this.closeMenuIfPresent();
-            currentPage++;
-            console.log(`Navigating to page ${currentPage}...`);
-            continue;
+          if (await downloadButton.count() > 0) {
+            const downloadPromise = this.page.waitForEvent('download');
+            await downloadButton.click();
+            console.log(`Clicked download button in row ${i + 1} - Document: ${documentData.documentNumber} - Sender: ${documentData.senderName}`);
+
+            const download = await downloadPromise;
+            const filename = download.suggestedFilename();
+            const downloadPath = path.join(this.config.downloadDirectory, filename);
+            
+            await download.saveAs(downloadPath);
+            console.log(`Downloading file: ${filename} to ${this.config.downloadDirectory}`);
+            
+            // Update database record
+            await this.updateDocumentAsDownloaded(documentData, downloadPath);
+            
+            const stats = fs.statSync(downloadPath);
+            downloadedFiles.push({
+              filename,
+              size: stats.size,
+              downloadPath,
+              downloadDate: new Date().toISOString()
+            });
+            
+            await this.page.waitForTimeout(this.config.timeouts.shortDelay);
           } else {
-            console.log("Next button is disabled. No more pages.");
-            break;
+            console.log(`Row ${i + 1}: Download button not found.`);
           }
-        } else {
-          console.log("Pagination button '#tableDocuments_next' not found.");
-          break;
+        } catch (e) {
+          console.error(`Error processing row ${i + 1}: ${e}`);
+          continue;
         }
-      } catch (e) {
-        console.error(`General error in processTbodyDownloads: ${e}`);
-        break;
       }
-    }
 
-    return downloadedFiles;
+      console.log(`Downloaded ${downloadedFiles.length} files from current page.`);
+      return downloadedFiles;
+    } catch (e) {
+      console.error(`Error processing current page downloads: ${e}`);
+      return [];
+    }
   }
 
   private createDownloadDirectory(): void {
@@ -415,24 +403,69 @@ export class ScrapingService {
       await this.page.waitForTimeout(this.config.timeouts.pageLoad);
       await this.closeMenuIfPresent();
 
-      // First, map all table data and save to database
-      console.log('Starting table data mapping...');
-      const mappedDocuments = await this.mapTableData();
-      console.log(`Mapped ${mappedDocuments.length} documents from table.`);
-      
-      // Save documents to database
-      await this.saveDocumentsToDatabase(mappedDocuments);
-      console.log('All documents saved to database successfully.');
+      // Process page by page: map -> save to DB -> download -> next page
+      console.log('Starting page-by-page processing...');
+      let totalMappedDocuments = 0;
+      let totalDownloadedFiles: DownloadedFile[] = [];
+      let currentPage = 1;
 
-      // Process downloads with filtering
-      console.log('Starting filtered download process...');
-      const downloadedFiles = await this.processTbodyDownloads();
-      console.log(`Download process completed. Total files: ${downloadedFiles.length}`);
+      while (true) {
+        try {
+          console.log(`\n=== PROCESSING PAGE ${currentPage} ===`);
+          
+          // Step 1: Map current page data
+          console.log(`Step 1: Mapping page ${currentPage} data...`);
+          const pageDocuments = await this.mapCurrentPageData();
+          console.log(`Mapped ${pageDocuments.length} documents from page ${currentPage}.`);
+          
+          // Step 2: Save page documents to database
+          console.log(`Step 2: Saving page ${currentPage} documents to database...`);
+          await this.saveDocumentsToDatabase(pageDocuments);
+          totalMappedDocuments += pageDocuments.length;
+          console.log(`Saved ${pageDocuments.length} documents to database. Total mapped: ${totalMappedDocuments}`);
+          
+          // Step 3: Download files from current page
+          console.log(`Step 3: Downloading files from page ${currentPage}...`);
+          const pageDownloadedFiles = await this.processCurrentPageDownloads();
+          totalDownloadedFiles = totalDownloadedFiles.concat(pageDownloadedFiles);
+          console.log(`Downloaded ${pageDownloadedFiles.length} files from page ${currentPage}. Total downloaded: ${totalDownloadedFiles.length}`);
+          
+          // Step 4: Check if there's a next page
+          console.log(`Step 4: Checking for next page...`);
+          const hasNext = await this.hasNextPage();
+          
+          if (!hasNext) {
+            console.log('No more pages to process. Finished all pages.');
+            break;
+          }
+          
+          // Step 5: Go to next page
+          console.log(`Step 5: Moving to page ${currentPage + 1}...`);
+          const movedToNext = await this.goToNextPage();
+          
+          if (!movedToNext) {
+            console.log('Failed to move to next page. Stopping process.');
+            break;
+          }
+          
+          currentPage++;
+          console.log(`Successfully moved to page ${currentPage}.`);
+          
+        } catch (error) {
+          console.error(`Error processing page ${currentPage}: ${error}`);
+          break;
+        }
+      }
+
+      console.log(`\n=== PROCESSING COMPLETED ===`);
+      console.log(`Total pages processed: ${currentPage}`);
+      console.log(`Total documents mapped: ${totalMappedDocuments}`);
+      console.log(`Total files downloaded: ${totalDownloadedFiles.length}`);
 
       return {
         success: true,
-        message: `Mapped ${mappedDocuments.length} documents and downloaded ${downloadedFiles.length} files`,
-        downloadedFiles
+        message: `Processed ${currentPage} pages, mapped ${totalMappedDocuments} documents and downloaded ${totalDownloadedFiles.length} files`,
+        downloadedFiles: totalDownloadedFiles
       };
 
     } catch (error) {
