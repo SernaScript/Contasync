@@ -1,17 +1,20 @@
 import { chromium, Page, Browser, BrowserContext } from 'playwright';
 import fs from 'fs';
 import path from 'path';
+import { PrismaClient } from '@prisma/client';
 import { ScrapingConfig, defaultScrapingConfig } from './config';
-import { ScrapingRequest, ScrapingResult, DownloadedFile, ScrapingProgress } from './types';
+import { ScrapingRequest, ScrapingResult, DownloadedFile, ScrapingProgress, ScrapedDocumentData } from './types';
 
 export class ScrapingService {
   private config: ScrapingConfig;
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
+  private prisma: PrismaClient;
 
   constructor(config?: Partial<ScrapingConfig>) {
     this.config = { ...defaultScrapingConfig, ...config };
+    this.prisma = new PrismaClient();
   }
 
   async initialize(): Promise<void> {
@@ -47,6 +50,7 @@ export class ScrapingService {
       await this.browser.close();
       this.browser = null;
     }
+    await this.prisma.$disconnect();
   }
 
   private async closeMenuIfPresent(): Promise<void> {
@@ -73,6 +77,154 @@ export class ScrapingService {
     }
   }
 
+  private async mapTableData(): Promise<ScrapedDocumentData[]> {
+    if (!this.page) throw new Error('Page not initialized');
+
+    const mappedDocuments: ScrapedDocumentData[] = [];
+    let currentPage = 1;
+
+    while (true) {
+      try {
+        await this.page.waitForSelector(this.config.selectors.tbody, { 
+          timeout: this.config.timeouts.elementWait 
+        });
+        console.log("Mapping table data...");
+
+        const rows = await this.page.locator(this.config.selectors.tableRows).all();
+        console.log(`Found ${rows.length} rows to map.`);
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          try {
+            console.log(`Mapping row ${i + 1}...`);
+            
+            // Map all table columns
+            const documentData: ScrapedDocumentData = {
+              reception: await this.getCellText(row, this.config.selectors.receptionColumn),
+              documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
+              prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
+              documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
+              documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
+              senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
+              senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
+              receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
+              receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
+              result: await this.getCellText(row, this.config.selectors.resultColumn),
+              radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
+              totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
+            };
+
+            mappedDocuments.push(documentData);
+            console.log(`Mapped document: ${documentData.documentNumber} - ${documentData.senderName}`);
+          } catch (e) {
+            console.error(`Error mapping row ${i + 1}: ${e}`);
+            continue;
+          }
+        }
+
+        // Check if there's a next page
+        const nextButton = this.page.locator(this.config.selectors.nextButton);
+        const isNextDisabled = await nextButton.getAttribute('class');
+        
+        if (isNextDisabled?.includes('disabled') || !(await nextButton.isVisible())) {
+          console.log("No more pages to map.");
+          break;
+        }
+
+        // Go to next page
+        console.log(`Going to page ${currentPage + 1}...`);
+        await nextButton.click();
+        await this.page.waitForTimeout(this.config.timeouts.longDelay);
+        currentPage++;
+        
+      } catch (e) {
+        console.error(`Error mapping page ${currentPage}: ${e}`);
+        break;
+      }
+    }
+
+    console.log(`Total documents mapped: ${mappedDocuments.length}`);
+    return mappedDocuments;
+  }
+
+  private async getCellText(row: any, selector: string): Promise<string | undefined> {
+    try {
+      const cell = row.locator(selector);
+      if (await cell.count() > 0) {
+        const text = await cell.textContent();
+        return text?.trim() || undefined;
+      }
+    } catch (e) {
+      console.error(`Error getting cell text for selector ${selector}: ${e}`);
+    }
+    return undefined;
+  }
+
+  private async saveDocumentsToDatabase(documents: ScrapedDocumentData[]): Promise<void> {
+    try {
+      console.log(`Saving ${documents.length} documents to database...`);
+      
+      for (const doc of documents) {
+        await (this.prisma as any).scrapedDocument.create({
+          data: {
+            reception: doc.reception,
+            documentDate: doc.documentDate,
+            prefix: doc.prefix,
+            documentNumber: doc.documentNumber,
+            documentType: doc.documentType,
+            senderNit: doc.senderNit,
+            senderName: doc.senderName,
+            receiverNit: doc.receiverNit,
+            receiverName: doc.receiverName,
+            result: doc.result,
+            radianStatus: doc.radianStatus,
+            totalValue: doc.totalValue,
+            isDownloaded: false
+          }
+        });
+      }
+      
+      console.log(`Successfully saved ${documents.length} documents to database.`);
+    } catch (error) {
+      console.error('Error saving documents to database:', error);
+      throw error;
+    }
+  }
+
+  private shouldSkipDocument(documentData: ScrapedDocumentData): boolean {
+    // Filter 1: Skip if sender name contains "F2X S.A.S."
+    if (documentData.senderName?.includes('F2X S.A.S.')) {
+      console.log(`Filtered out - Sender is F2X S.A.S.: ${documentData.senderName}`);
+      return true;
+    }
+
+    // Filter 2: Skip if result contains "Application response"
+    if (documentData.result?.includes('Application response')) {
+      console.log(`Filtered out - Contains Application response: ${documentData.result}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  private async updateDocumentAsDownloaded(documentData: ScrapedDocumentData, downloadPath: string): Promise<void> {
+    try {
+      await (this.prisma as any).scrapedDocument.updateMany({
+        where: {
+          documentNumber: documentData.documentNumber,
+          senderName: documentData.senderName
+        },
+        data: {
+          isDownloaded: true,
+          downloadPath: downloadPath,
+          downloadDate: new Date()
+        }
+      });
+    } catch (error) {
+      console.error('Error updating document as downloaded:', error);
+    }
+  }
+
   private async processTbodyDownloads(): Promise<DownloadedFile[]> {
     if (!this.page) throw new Error('Page not initialized');
 
@@ -94,36 +246,26 @@ export class ScrapingService {
           try {
             console.log(`Processing row ${i + 1}...`);
             
-            // Check Emisor field (column 8) - Skip if contains "F2X S.A.S."
-            const emisorCell = row.locator(this.config.selectors.emisorColumn);
-            let emisorText = '';
-            
-            if (await emisorCell.count() > 0) {
-              emisorText = await emisorCell.textContent() || '';
-              console.log(`Emisor in row ${i + 1}: "${emisorText.trim()}"`);
-              
-              if (emisorText.includes('F2X S.A.S.')) {
-                console.log(`Skipping row ${i + 1} - Emisor is F2X S.A.S.`);
-                continue;
-              }
-            } else {
-              console.log(`Emisor field not found in row ${i + 1}`);
-            }
-            
-            // Check Application response field (column 6) - Skip if contains "Application response"
-            const responseCell = row.locator(this.config.selectors.responseColumn);
-            let responseText = '';
-            
-            if (await responseCell.count() > 0) {
-              responseText = await responseCell.textContent() || '';
-              console.log(`Response in row ${i + 1}: "${responseText.trim()}"`);
-              
-              if (responseText.includes('Application response')) {
-                console.log(`Skipping row ${i + 1} - Contains Application response`);
-                continue;
-              }
-            } else {
-              console.log(`Response field not found in row ${i + 1}`);
+            // Get document data for filtering
+            const documentData: ScrapedDocumentData = {
+              reception: await this.getCellText(row, this.config.selectors.receptionColumn),
+              documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
+              prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
+              documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
+              documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
+              senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
+              senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
+              receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
+              receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
+              result: await this.getCellText(row, this.config.selectors.resultColumn),
+              radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
+              totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
+            };
+
+            // Apply filters
+            if (this.shouldSkipDocument(documentData)) {
+              console.log(`Skipping row ${i + 1} - Document filtered out`);
+              continue;
             }
             
             const downloadButton = row.locator(this.config.selectors.downloadButton);
@@ -131,14 +273,17 @@ export class ScrapingService {
             if (await downloadButton.count() > 0) {
               const downloadPromise = this.page.waitForEvent('download');
               await downloadButton.click();
-              console.log(`Clicked download button in row ${i + 1} - Emisor: "${emisorText.trim()}", Response: "${responseText.trim()}"`);
+              console.log(`Clicked download button in row ${i + 1} - Document: ${documentData.documentNumber} - Sender: ${documentData.senderName}`);
 
               const download = await downloadPromise;
               const filename = download.suggestedFilename();
               const downloadPath = path.join(this.config.downloadDirectory, filename);
               
               await download.saveAs(downloadPath);
-              console.log(`Descargando el archivo: ${filename} en ${this.config.downloadDirectory}`);
+              console.log(`Downloading file: ${filename} to ${this.config.downloadDirectory}`);
+              
+              // Update database record
+              await this.updateDocumentAsDownloaded(documentData, downloadPath);
               
               const stats = fs.statSync(downloadPath);
               downloadedFiles.push({
@@ -270,14 +415,23 @@ export class ScrapingService {
       await this.page.waitForTimeout(this.config.timeouts.pageLoad);
       await this.closeMenuIfPresent();
 
-      // Process downloads
-      console.log('Iniciando el proceso de descarga de los documentos.');
+      // First, map all table data and save to database
+      console.log('Starting table data mapping...');
+      const mappedDocuments = await this.mapTableData();
+      console.log(`Mapped ${mappedDocuments.length} documents from table.`);
+      
+      // Save documents to database
+      await this.saveDocumentsToDatabase(mappedDocuments);
+      console.log('All documents saved to database successfully.');
+
+      // Process downloads with filtering
+      console.log('Starting filtered download process...');
       const downloadedFiles = await this.processTbodyDownloads();
-      console.log(`Proceso de descarga completado. Total de archivos: ${downloadedFiles.length}`);
+      console.log(`Download process completed. Total files: ${downloadedFiles.length}`);
 
       return {
         success: true,
-        message: `Se han descargado ${downloadedFiles.length} archivos`,
+        message: `Mapped ${mappedDocuments.length} documents and downloaded ${downloadedFiles.length} files`,
         downloadedFiles
       };
 
