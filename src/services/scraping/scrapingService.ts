@@ -94,21 +94,36 @@ export class ScrapingService {
           try {
             console.log(`Processing row ${i + 1}...`);
             
-            
+            // Check Emisor field (column 8) - Skip if contains "F2X S.A.S."
             const emisorCell = row.locator(this.config.selectors.emisorColumn);
             let emisorText = '';
             
             if (await emisorCell.count() > 0) {
               emisorText = await emisorCell.textContent() || '';
-              console.log(`Emisor en fila ${i + 1}: "${emisorText.trim()}"`);
-              
+              console.log(`Emisor in row ${i + 1}: "${emisorText.trim()}"`);
               
               if (emisorText.includes('F2X S.A.S.')) {
-                console.log(`Saltando fila ${i + 1} - Emisor es F2X S.A.S.`);
+                console.log(`Skipping row ${i + 1} - Emisor is F2X S.A.S.`);
                 continue;
               }
             } else {
-              console.log(`No se encontró el campo Emisor en la fila ${i + 1}`);
+              console.log(`Emisor field not found in row ${i + 1}`);
+            }
+            
+            // Check Application response field (column 6) - Skip if contains "Application response"
+            const responseCell = row.locator(this.config.selectors.responseColumn);
+            let responseText = '';
+            
+            if (await responseCell.count() > 0) {
+              responseText = await responseCell.textContent() || '';
+              console.log(`Response in row ${i + 1}: "${responseText.trim()}"`);
+              
+              if (responseText.includes('Application response')) {
+                console.log(`Skipping row ${i + 1} - Contains Application response`);
+                continue;
+              }
+            } else {
+              console.log(`Response field not found in row ${i + 1}`);
             }
             
             const downloadButton = row.locator(this.config.selectors.downloadButton);
@@ -116,7 +131,7 @@ export class ScrapingService {
             if (await downloadButton.count() > 0) {
               const downloadPromise = this.page.waitForEvent('download');
               await downloadButton.click();
-              console.log(`Clicked download button in row ${i + 1} - Emisor: "${emisorText.trim()}"`);
+              console.log(`Clicked download button in row ${i + 1} - Emisor: "${emisorText.trim()}", Response: "${responseText.trim()}"`);
 
               const download = await downloadPromise;
               const filename = download.suggestedFilename();
