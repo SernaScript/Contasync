@@ -238,6 +238,8 @@ model ScrapedDocument {
   isDownloaded      Boolean  @default(false)
   downloadPath      String?
   downloadDate      DateTime?
+  extractedFiles    String?  // JSON string with array of extracted file paths
+  extractedFilesCount Int?   // Number of extracted files
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

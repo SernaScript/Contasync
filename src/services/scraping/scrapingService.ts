@@ -4,6 +4,7 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { ScrapingConfig, defaultScrapingConfig } from './config';
 import { ScrapingRequest, ScrapingResult, DownloadedFile, ScrapingProgress, ScrapedDocumentData } from './types';
+import * as yauzl from 'yauzl';
 
 export class ScrapingService {
   private config: ScrapingConfig;
@@ -318,8 +319,20 @@ export class ScrapingService {
     return false;
   }
 
-  private async updateDocumentAsDownloaded(documentData: ScrapedDocumentData, downloadPath: string): Promise<void> {
+  private async updateDocumentAsDownloaded(documentData: ScrapedDocumentData, downloadPath: string, extractedFiles?: string[]): Promise<void> {
     try {
+      const updateData: any = {
+        isDownloaded: true,
+        downloadPath: downloadPath,
+        downloadDate: new Date()
+      };
+
+      // Add extracted files info if available
+      if (extractedFiles && extractedFiles.length > 0) {
+        updateData.extractedFiles = JSON.stringify(extractedFiles);
+        updateData.extractedFilesCount = extractedFiles.length;
+      }
+
       if (documentData.documentUUID) {
         await (this.prisma as any).scrapedDocument.updateMany({
           where: {
@@ -328,7 +341,8 @@ export class ScrapingService {
           data: {
             isDownloaded: true,
             downloadPath: downloadPath,
-            downloadDate: new Date()
+            downloadDate: new Date(),
+            updatedAt: new Date()
           }
         });
       } else {
@@ -338,11 +352,7 @@ export class ScrapingService {
             documentNumber: documentData.documentNumber,
             senderName: documentData.senderName
           },
-          data: {
-            isDownloaded: true,
-            downloadPath: downloadPath,
-            downloadDate: new Date()
-          }
+          data: updateData
         });
       }
     } catch (error) {
@@ -396,9 +406,26 @@ export class ScrapingService {
             await download.saveAs(downloadPath);
             console.log(`Downloading file: ${filename} to ${this.config.downloadDirectory}`);
             
-            // Update database record immediately after successful download
-            await this.updateDocumentAsDownloaded(documentData, downloadPath);
-            console.log(`Updated database record with download path: ${downloadPath}`);
+            // Extract and classify ZIP file immediately after download
+            if (filename.toLowerCase().endsWith('.zip')) {
+              try {
+                console.log(`Extracting and classifying ZIP file: ${filename}`);
+                const extractedFiles = await this.extractAndClassifyZip(downloadPath, documentData);
+                console.log(`Successfully extracted and classified ${extractedFiles.length} files from ${filename}`);
+                
+                // Update database record with extraction info
+                await this.updateDocumentAsDownloaded(documentData, downloadPath, extractedFiles);
+                console.log(`Updated database record with download path and extracted files: ${downloadPath}`);
+              } catch (extractionError) {
+                console.error(`Error extracting ZIP file ${filename}:`, extractionError);
+                // Continue with the process even if extraction fails
+                await this.updateDocumentAsDownloaded(documentData, downloadPath);
+              }
+            } else {
+              // Update database record immediately after successful download (non-ZIP files)
+              await this.updateDocumentAsDownloaded(documentData, downloadPath);
+              console.log(`Updated database record with download path: ${downloadPath}`);
+            }
             
             const stats = fs.statSync(downloadPath);
             downloadedFiles.push({
@@ -433,6 +460,105 @@ export class ScrapingService {
     }
   }
 
+  private createExtractionDirectories(): void {
+    const downloadDirectory = path.resolve(this.config.downloadDirectory);
+    const xmlDirectory = path.join(downloadDirectory, 'XML');
+    const pdfDirectory = path.join(downloadDirectory, 'PDF');
+    
+    if (!fs.existsSync(xmlDirectory)) {
+      fs.mkdirSync(xmlDirectory, { recursive: true });
+    }
+    if (!fs.existsSync(pdfDirectory)) {
+      fs.mkdirSync(pdfDirectory, { recursive: true });
+    }
+  }
+
+  private async extractAndClassifyZip(zipPath: string, documentData: ScrapedDocumentData): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const extractedFiles: string[] = [];
+      const downloadDirectory = path.resolve(this.config.downloadDirectory);
+      const xmlDirectory = path.join(downloadDirectory, 'XML');
+      const pdfDirectory = path.join(downloadDirectory, 'PDF');
+
+      yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+        if (err) {
+          console.error(`Error opening ZIP file ${zipPath}:`, err);
+          reject(err);
+          return;
+        }
+
+        if (!zipfile) {
+          reject(new Error('Failed to open ZIP file'));
+          return;
+        }
+
+        zipfile.readEntry();
+        
+        zipfile.on('entry', (entry) => {
+          if (/\/$/.test(entry.fileName)) {
+            // Directory entry, skip
+            zipfile.readEntry();
+            return;
+          }
+
+          zipfile.openReadStream(entry, (err, readStream) => {
+            if (err) {
+              console.error(`Error reading entry ${entry.fileName}:`, err);
+              zipfile.readEntry();
+              return;
+            }
+
+            if (!readStream) {
+              zipfile.readEntry();
+              return;
+            }
+
+            const fileName = path.basename(entry.fileName);
+            const fileExtension = path.extname(fileName).toLowerCase();
+            
+            let targetDir: string;
+            if (fileExtension === '.xml') {
+              targetDir = xmlDirectory;
+            } else if (fileExtension === '.pdf') {
+              targetDir = pdfDirectory;
+            } else {
+              // Skip files that are not XML or PDF
+              console.log(`Skipping file ${fileName} - not XML or PDF`);
+              zipfile.readEntry();
+              return;
+            }
+
+            const targetPath = path.join(targetDir, fileName);
+            const writeStream = fs.createWriteStream(targetPath);
+
+            readStream.pipe(writeStream);
+
+            writeStream.on('close', () => {
+              extractedFiles.push(targetPath);
+              console.log(`Extracted ${fileName} to ${targetDir}`);
+              zipfile.readEntry();
+            });
+
+            writeStream.on('error', (err) => {
+              console.error(`Error writing file ${fileName}:`, err);
+              zipfile.readEntry();
+            });
+          });
+        });
+
+        zipfile.on('end', () => {
+          console.log(`Finished extracting ZIP file ${zipPath}. Extracted ${extractedFiles.length} files.`);
+          resolve(extractedFiles);
+        });
+
+        zipfile.on('error', (err) => {
+          console.error(`Error processing ZIP file ${zipPath}:`, err);
+          reject(err);
+        });
+      });
+    });
+  }
+
   async runScraping(request: ScrapingRequest): Promise<ScrapingResult> {
     try {
       await this.initialize();
@@ -448,6 +574,7 @@ export class ScrapingService {
       this.config.endDate = request.endDate;
 
       this.createDownloadDirectory();
+      this.createExtractionDirectories();
 
       // Navigate to token URL
       console.log('Ingresando al portal de la DIAN.');
