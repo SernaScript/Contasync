@@ -93,12 +93,30 @@ export class ScrapingService {
           const row = rows[i];
           try {
             console.log(`Processing row ${i + 1}...`);
+            
+            
+            const emisorCell = row.locator(this.config.selectors.emisorColumn);
+            let emisorText = '';
+            
+            if (await emisorCell.count() > 0) {
+              emisorText = await emisorCell.textContent() || '';
+              console.log(`Emisor en fila ${i + 1}: "${emisorText.trim()}"`);
+              
+              
+              if (emisorText.includes('F2X S.A.S.')) {
+                console.log(`Saltando fila ${i + 1} - Emisor es F2X S.A.S.`);
+                continue;
+              }
+            } else {
+              console.log(`No se encontró el campo Emisor en la fila ${i + 1}`);
+            }
+            
             const downloadButton = row.locator(this.config.selectors.downloadButton);
 
             if (await downloadButton.count() > 0) {
               const downloadPromise = this.page.waitForEvent('download');
               await downloadButton.click();
-              console.log(`Clicked download button in row ${i + 1}.`);
+              console.log(`Clicked download button in row ${i + 1} - Emisor: "${emisorText.trim()}"`);
 
               const download = await downloadPromise;
               const filename = download.suggestedFilename();

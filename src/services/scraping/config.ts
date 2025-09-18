@@ -22,6 +22,7 @@ export interface ScrapingConfig {
     tbody: string;
     tableRows: string;
     downloadButton: string;
+    emisorColumn: string;
     nextButton: string;
     dateRangePicker: string;
     startDateInput: string;
@@ -57,6 +58,7 @@ export const defaultScrapingConfig: ScrapingConfig = {
     tbody: "tbody",
     tableRows: "tbody tr",
     downloadButton: "td:first-child .fa-download",
+    emisorColumn: "td:nth-child(8)", 
     nextButton: "#tableDocuments_next",
     dateRangePicker: "#dashboard-report-range",
     startDateInput: "input[name='daterangepicker_start']",
