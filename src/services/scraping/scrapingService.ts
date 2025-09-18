@@ -77,6 +77,32 @@ export class ScrapingService {
     }
   }
 
+  private async selectRecordsPerPage(): Promise<void> {
+    if (!this.page) return;
+
+    try {
+      console.log("Seleccionando 100 registros por página...");
+      
+      // Wait for the select element to be visible
+      await this.page.waitForSelector(this.config.selectors.recordsPerPageSelect, { 
+        timeout: this.config.timeouts.elementWait 
+      });
+      
+      // Select the option with value "100"
+      await this.page.selectOption(this.config.selectors.recordsPerPageSelect, "100");
+      
+      console.log("Seleccionado 100 registros por página correctamente.");
+      
+      // Wait a bit for the page to update with the new selection
+      await this.page.waitForTimeout(this.config.timeouts.mediumDelay);
+      await this.closeMenuIfPresent();
+      
+    } catch (e) {
+      console.error(`Error selecting records per page: ${e}`);
+      // Don't throw error, continue with the process even if this fails
+    }
+  }
+
   private async mapCurrentPageData(): Promise<ScrapedDocumentData[]> {
     if (!this.page) throw new Error('Page not initialized');
 
@@ -201,9 +227,31 @@ export class ScrapingService {
       console.log(`Saving ${documents.length} documents to database...`);
       
       for (const doc of documents) {
-        await (this.prisma as any).scrapedDocument.create({
-          data: {
-            documentUUID: doc.documentUUID || `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        const documentUUID = doc.documentUUID || `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Use upsert to handle duplicates gracefully
+        await (this.prisma as any).scrapedDocument.upsert({
+          where: {
+            documentUUID: documentUUID
+          },
+          update: {
+            // Update existing record with latest data
+            reception: doc.reception,
+            documentDate: doc.documentDate,
+            prefix: doc.prefix,
+            documentNumber: doc.documentNumber,
+            documentType: doc.documentType,
+            senderNit: doc.senderNit,
+            senderName: doc.senderName,
+            receiverNit: doc.receiverNit,
+            receiverName: doc.receiverName,
+            result: doc.result,
+            radianStatus: doc.radianStatus,
+            totalValue: doc.totalValue,
+            updatedAt: new Date()
+          },
+          create: {
+            documentUUID: documentUUID,
             reception: doc.reception,
             documentDate: doc.documentDate,
             prefix: doc.prefix,
@@ -228,7 +276,24 @@ export class ScrapingService {
     }
   }
 
-  private shouldSkipDocument(documentData: ScrapedDocumentData): boolean {
+  private async isDocumentAlreadyInDatabase(documentUUID: string): Promise<boolean> {
+    try {
+      if (!documentUUID) return false;
+      
+      const existingDocument = await (this.prisma as any).scrapedDocument.findUnique({
+        where: {
+          documentUUID: documentUUID
+        }
+      });
+      
+      return existingDocument !== null;
+    } catch (error) {
+      console.error('Error checking if document exists in database:', error);
+      return false; // If error, don't skip (allow download)
+    }
+  }
+
+  private async shouldSkipDocument(documentData: ScrapedDocumentData): Promise<boolean> {
     // Filter 1: Skip if sender name contains "F2X S.A.S."
     if (documentData.senderName?.includes('F2X S.A.S.')) {
       console.log(`Filtered out - Sender is F2X S.A.S.: ${documentData.senderName}`);
@@ -239,6 +304,15 @@ export class ScrapingService {
     if (documentData.documentType?.includes('Application response')) {
       console.log(`Filtered out - Contains Application response: ${documentData.documentType}`);
       return true;
+    }
+
+    // Filter 3: Skip if document already exists in database
+    if (documentData.documentUUID) {
+      const alreadyExists = await this.isDocumentAlreadyInDatabase(documentData.documentUUID);
+      if (alreadyExists) {
+        console.log(`Filtered out - Document already exists in database: ${documentData.documentUUID}`);
+        return true;
+      }
     }
 
     return false;
@@ -276,7 +350,7 @@ export class ScrapingService {
     }
   }
 
-  private async processCurrentPageDownloads(): Promise<DownloadedFile[]> {
+  private async processCurrentPageDownloads(mappedDocuments: ScrapedDocumentData[]): Promise<DownloadedFile[]> {
     if (!this.page) throw new Error('Page not initialized');
 
     const downloadedFiles: DownloadedFile[] = [];
@@ -295,25 +369,15 @@ export class ScrapingService {
         try {
           console.log(`Processing row ${i + 1}...`);
           
-          // Get document data for filtering
-          const documentData: ScrapedDocumentData = {
-            documentUUID: await this.getDownloadButtonUUID(row),
-            reception: await this.getCellText(row, this.config.selectors.receptionColumn),
-            documentDate: await this.getCellText(row, this.config.selectors.documentDateColumn),
-            prefix: await this.getCellText(row, this.config.selectors.prefixColumn),
-            documentNumber: await this.getCellText(row, this.config.selectors.documentNumberColumn),
-            documentType: await this.getCellText(row, this.config.selectors.documentTypeColumn),
-            senderNit: await this.getCellText(row, this.config.selectors.senderNitColumn),
-            senderName: await this.getCellText(row, this.config.selectors.senderNameColumn),
-            receiverNit: await this.getCellText(row, this.config.selectors.receiverNitColumn),
-            receiverName: await this.getCellText(row, this.config.selectors.receiverNameColumn),
-            result: await this.getCellText(row, this.config.selectors.resultColumn),
-            radianStatus: await this.getCellText(row, this.config.selectors.radianStatusColumn),
-            totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
-          };
+          // Use the already mapped document data instead of re-extracting
+          const documentData = mappedDocuments[i];
+          if (!documentData) {
+            console.log(`No mapped data for row ${i + 1}, skipping...`);
+            continue;
+          }
 
           // Apply filters
-          if (this.shouldSkipDocument(documentData)) {
+          if (await this.shouldSkipDocument(documentData)) {
             console.log(`Skipping row ${i + 1} - Document filtered out`);
             continue;
           }
@@ -332,8 +396,9 @@ export class ScrapingService {
             await download.saveAs(downloadPath);
             console.log(`Downloading file: ${filename} to ${this.config.downloadDirectory}`);
             
-            // Update database record
+            // Update database record immediately after successful download
             await this.updateDocumentAsDownloaded(documentData, downloadPath);
+            console.log(`Updated database record with download path: ${downloadPath}`);
             
             const stats = fs.statSync(downloadPath);
             downloadedFiles.push({
@@ -438,6 +503,9 @@ export class ScrapingService {
         });
         console.log("Los documentos se han cargado correctamente.");
         await this.page.waitForTimeout(this.config.timeouts.mediumDelay * 2);
+
+        // Select 100 records per page after the table loads
+        await this.selectRecordsPerPage();
       } else {
         throw new Error("Se ha encontrado un error al buscar los documentos.");
       }
@@ -445,7 +513,7 @@ export class ScrapingService {
       await this.page.waitForTimeout(this.config.timeouts.pageLoad);
       await this.closeMenuIfPresent();
 
-      // Process page by page: map -> save to DB -> download -> next page
+      // Process page by page: map -> download (with filters) -> save to DB -> next page
       console.log('Starting page-by-page processing...');
       let totalMappedDocuments = 0;
       let totalDownloadedFiles: DownloadedFile[] = [];
@@ -460,17 +528,17 @@ export class ScrapingService {
           const pageDocuments = await this.mapCurrentPageData();
           console.log(`Mapped ${pageDocuments.length} documents from page ${currentPage}.`);
           
-          // Step 2: Save page documents to database
-          console.log(`Step 2: Saving page ${currentPage} documents to database...`);
+          // Step 2: Download files from current page (with filters)
+          console.log(`Step 2: Downloading files from page ${currentPage} (with filters)...`);
+          const pageDownloadedFiles = await this.processCurrentPageDownloads(pageDocuments);
+          totalDownloadedFiles = totalDownloadedFiles.concat(pageDownloadedFiles);
+          console.log(`Downloaded ${pageDownloadedFiles.length} files from page ${currentPage}. Total downloaded: ${totalDownloadedFiles.length}`);
+          
+          // Step 3: Save page documents to database (after downloads)
+          console.log(`Step 3: Saving page ${currentPage} documents to database...`);
           await this.saveDocumentsToDatabase(pageDocuments);
           totalMappedDocuments += pageDocuments.length;
           console.log(`Saved ${pageDocuments.length} documents to database. Total mapped: ${totalMappedDocuments}`);
-          
-          // Step 3: Download files from current page
-          console.log(`Step 3: Downloading files from page ${currentPage}...`);
-          const pageDownloadedFiles = await this.processCurrentPageDownloads();
-          totalDownloadedFiles = totalDownloadedFiles.concat(pageDownloadedFiles);
-          console.log(`Downloaded ${pageDownloadedFiles.length} files from page ${currentPage}. Total downloaded: ${totalDownloadedFiles.length}`);
           
           // Step 4: Check if there's a next page
           console.log(`Step 4: Checking for next page...`);

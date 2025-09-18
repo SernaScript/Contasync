@@ -44,6 +44,7 @@ export interface ScrapingConfig {
     endDateInput: string;
     senderCode: string;
     submitButton: string;
+    recordsPerPageSelect: string;
   };
 }
 
@@ -94,6 +95,7 @@ export const defaultScrapingConfig: ScrapingConfig = {
     startDateInput: "input[name='daterangepicker_start']",
     endDateInput: "input[name='daterangepicker_end']",
     senderCode: "#SenderCode",
-    submitButton: "//button[@type='submit']"
+    submitButton: "//button[@type='submit']",
+    recordsPerPageSelect: "label:has-text('Mostrar') select"
   }
 };
