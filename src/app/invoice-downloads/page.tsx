@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from "@/components/MainLayout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from '@/components/ui/button';
@@ -20,16 +20,19 @@ import {
   AlertCircle,
   Clock,
   Key,
-  Settings
+  Settings,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 
 interface InvoiceDownload {
   id: string;
-  invoiceNumber: string;
+  documentNumber: string;
   date: string;
-  amount: number;
+  totalValue: string;
   status: 'pending' | 'downloaded' | 'failed';
-  customer: string;
+  senderName: string;
+  senderNit: string;
   type: string;
 }
 
@@ -61,6 +64,7 @@ interface DownloadedFile {
 export default function InvoiceDownloadsPage() {
   const [downloads, setDownloads] = useState<InvoiceDownload[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("download");
   const [scrapingForm, setScrapingForm] = useState<ScrapingForm>({
     token: '',
@@ -73,35 +77,107 @@ export default function InvoiceDownloadsPage() {
   });
   const [scrapingResult, setScrapingResult] = useState<ScrapingResult | null>(null);
   const [isScraping, setIsScraping] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    documentNumber: '',
+    senderName: '',
+    senderNit: ''
+  });
+
+  const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pagination.limit.toString()
+      });
+      
+      if (searchFilters.documentNumber) {
+        params.append('documentNumber', searchFilters.documentNumber);
+      }
+      if (searchFilters.senderName) {
+        params.append('senderName', searchFilters.senderName);
+      }
+      if (searchFilters.senderNit) {
+        params.append('senderNit', searchFilters.senderNit);
+      }
+      
+      const response = await fetch(`/api/scraped-documents?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setDownloads(result.data.documents);
+        setPagination(result.data.pagination);
+      } else {
+        console.error('Error loading documents:', result.message);
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadDocuments(newPage);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (pagination.page > 1) {
+      handlePageChange(pagination.page - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages) {
+      handlePageChange(pagination.page + 1);
+    }
+  };
+
+  const handleFilterChange = (field: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSearch = () => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+    loadDocuments(1, filters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      documentNumber: '',
+      senderName: '',
+      senderNit: ''
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
+    loadDocuments(1, {
+      documentNumber: '',
+      senderName: '',
+      senderNit: ''
+    });
+  };
 
   const handleDownloadInvoices = async () => {
     setIsDownloading(true);
     
-    // Simulate download process
     setTimeout(() => {
       setIsDownloading(false);
-      // Add some mock data
-      const mockDownloads: InvoiceDownload[] = [
-        {
-          id: '1',
-          invoiceNumber: 'FAC-001-2024',
-          date: '2024-01-15',
-          amount: 1500000,
-          status: 'downloaded',
-          customer: 'Empresa ABC S.A.S.',
-          type: 'Venta'
-        },
-        {
-          id: '2',
-          invoiceNumber: 'FAC-002-2024',
-          date: '2024-01-16',
-          amount: 2300000,
-          status: 'downloaded',
-          customer: 'Comercial XYZ Ltda.',
-          type: 'Venta'
-        }
-      ];
-      setDownloads(mockDownloads);
+      loadDocuments();
     }, 2000);
   };
 
@@ -166,17 +242,18 @@ export default function InvoiceDownloadsPage() {
         // Convert scraping results to invoice downloads format
         const convertedDownloads: InvoiceDownload[] = result.data.downloadedFiles.map((file: DownloadedFile, index: number) => ({
           id: (index + 1).toString(),
-          invoiceNumber: file.filename.replace('.pdf', '').replace('.xml', ''),
+          documentNumber: file.filename.replace('.pdf', '').replace('.xml', ''),
           date: new Date(file.downloadDate).toISOString().split('T')[0],
-          amount: 0, // Amount not available from scraping
+          totalValue: 'N/A', // Amount not available from scraping
           status: 'downloaded' as const,
-          customer: 'DIAN',
+          senderName: 'DIAN',
+          senderNit: 'N/A',
           type: 'Documento'
         }));
         
         setDownloads(convertedDownloads);
+        loadDocuments();
       } else {
-        // Use the Spanish message if available, otherwise fall back to error
         const errorMessage = result.message || result.error || 'Error desconocido';
         setScrapingResult({
           success: false,
@@ -314,74 +391,215 @@ export default function InvoiceDownloadsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {downloads.length === 0 ? (
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Cargando documentos...
+                    </h3>
+                    <p className="text-gray-600">
+                      Obteniendo documentos de la base de datos
+                    </p>
+                  </div>
+                ) : downloads.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Aún no se han descargado facturas
+                      No hay documentos disponibles
                     </h3>
                     <p className="text-gray-600 mb-4">
-                      Haz clic en "Descargar Facturas" para comenzar a descargar facturas desde SIIGO
+                      Ejecuta el scraping para obtener documentos de la DIAN
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium">Facturas Descargadas</h3>
+                      <h3 className="text-lg font-medium">Documentos Disponibles ({downloads.length})</h3>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowFilters(!showFilters)}
+                        >
                           <Filter className="h-4 w-4 mr-2" />
-                          Filtrar
+                          {showFilters ? 'Ocultar Filtros' : 'Filtrar'}
                         </Button>
-                        <Button variant="outline" size="sm">
-                          <Search className="h-4 w-4 mr-2" />
-                          Buscar
+                        <Button variant="outline" size="sm" onClick={() => loadDocuments()}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Actualizar
                         </Button>
                       </div>
                     </div>
                     
-                    <div className="grid gap-4">
-                      {downloads.map((invoice) => (
-                        <Card key={invoice.id} className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <FileText className="h-5 w-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-gray-900">
-                                  {invoice.invoiceNumber}
-                                </h4>
-                                <p className="text-sm text-gray-600">
-                                  {invoice.customer}
-                                </p>
-                                <div className="flex items-center gap-4 mt-1">
-                                  <span className="text-sm text-gray-500">
-                                    {formatDate(invoice.date)}
-                                  </span>
-                                  <span className="text-sm font-medium text-gray-900">
-                                    {formatCurrency(invoice.amount)}
-                                  </span>
-                                  <span className="text-sm text-gray-500">
-                                    {invoice.type}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                                {getStatusIcon(invoice.status)}
-                                {getStatusText(invoice.status)}
-                              </div>
-                              <Button size="sm" variant="outline">
-                                <Download className="h-3 w-3 mr-1" />
-                                Descargar
-                              </Button>
-                            </div>
+                    {showFilters && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="filter-document-number" className="text-sm font-medium">
+                              Nº Documento
+                            </Label>
+                            <Input
+                              id="filter-document-number"
+                              value={filters.documentNumber}
+                              onChange={(e) => handleFilterChange('documentNumber', e.target.value)}
+                              placeholder="Buscar por número de documento"
+                              className="mt-1"
+                            />
                           </div>
-                        </Card>
-                      ))}
+                          
+                          <div>
+                            <Label htmlFor="filter-sender-name" className="text-sm font-medium">
+                              Proveedor
+                            </Label>
+                            <Input
+                              id="filter-sender-name"
+                              value={filters.senderName}
+                              onChange={(e) => handleFilterChange('senderName', e.target.value)}
+                              placeholder="Buscar por nombre del proveedor"
+                              className="mt-1"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="filter-sender-nit" className="text-sm font-medium">
+                              NIT
+                            </Label>
+                            <Input
+                              id="filter-sender-nit"
+                              value={filters.senderNit}
+                              onChange={(e) => handleFilterChange('senderNit', e.target.value)}
+                              placeholder="Buscar por NIT"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-4">
+                          <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700">
+                            <Search className="h-4 w-4 mr-2" />
+                            Buscar
+                          </Button>
+                          <Button variant="outline" onClick={handleClearFilters}>
+                            Limpiar Filtros
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Nº Documento</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Proveedor</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">NIT</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Fecha</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Valor Total</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Estado</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {downloads.map((invoice) => (
+                            <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-2 px-3 text-sm text-gray-900 font-medium">
+                                {invoice.documentNumber}
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-700">
+                                {invoice.senderName}
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-600">
+                                {invoice.senderNit}
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-600">
+                                {formatDate(invoice.date)}
+                              </td>
+                              <td className="py-2 px-3 text-sm font-medium text-gray-900">
+                                {invoice.totalValue}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                                  {getStatusIcon(invoice.status)}
+                                  {getStatusText(invoice.status)}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <Button size="sm" variant="outline" className="h-7 w-7 p-0">
+                                  <Download className="h-3 w-3" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                    
+                    {pagination.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center text-sm text-gray-700">
+                          <span>
+                            Mostrando {((pagination.page - 1) * pagination.limit) + 1} a {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} documentos
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePreviousPage}
+                            disabled={pagination.page <= 1}
+                            className="flex items-center gap-1"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Anterior
+                          </Button>
+                          
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                              const pageNum = i + 1;
+                              const isActive = pageNum === pagination.page;
+                              
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={isActive ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handlePageChange(pageNum)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                            
+                            {pagination.totalPages > 5 && (
+                              <>
+                                <span className="text-gray-500">...</span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePageChange(pagination.totalPages)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  {pagination.totalPages}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleNextPage}
+                            disabled={pagination.page >= pagination.totalPages}
+                            className="flex items-center gap-1"
+                          >
+                            Siguiente
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
