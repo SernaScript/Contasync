@@ -89,6 +89,7 @@ export default function InvoiceDownloadsPage() {
     senderName: '',
     senderNit: ''
   });
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -114,6 +115,10 @@ export default function InvoiceDownloadsPage() {
       if (result.success) {
         setDownloads(result.data.documents);
         setPagination(result.data.pagination);
+        
+        // Detectar si hay filtros activos
+        const hasFilters = !!(searchFilters.documentNumber || searchFilters.senderName || searchFilters.senderNit);
+        setHasActiveFilters(hasFilters);
       } else {
         console.error('Error loading documents:', result.message);
       }
@@ -164,6 +169,7 @@ export default function InvoiceDownloadsPage() {
       senderName: '',
       senderNit: ''
     });
+    setHasActiveFilters(false);
     setPagination(prev => ({ ...prev, page: 1 }));
     loadDocuments(1, {
       documentNumber: '',
@@ -320,6 +326,19 @@ export default function InvoiceDownloadsPage() {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    
+
+    if (dateString.includes('-') && dateString.split('-')[0].length <= 2) {
+      const [day, month, year] = dateString.split('-');
+      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      return new Date(isoDate).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
     return new Date(dateString).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
@@ -405,11 +424,16 @@ export default function InvoiceDownloadsPage() {
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No hay documentos disponibles
+                      {hasActiveFilters ? 'No encontramos documentos con los valores seleccionados' : 'No hay documentos disponibles'}
                     </h3>
                     <p className="text-gray-600 mb-4">
-                      Ejecuta el scraping para obtener documentos de la DIAN
+                      {hasActiveFilters ? 'Intenta con otros filtros o limpia la búsqueda' : 'Ejecuta el scraping para obtener documentos de la DIAN'}
                     </p>
+                    {hasActiveFilters && (
+                      <Button onClick={handleClearFilters} className="bg-blue-600 hover:bg-blue-700">
+                        Limpiar Filtros
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">

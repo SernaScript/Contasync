@@ -12,7 +12,11 @@ export async function GET(request: NextRequest) {
     const senderName = searchParams.get('senderName');
     const senderNit = searchParams.get('senderNit');
 
-    const whereConditions: any = {};
+    const whereConditions: any = {
+      documentType: {
+        not: 'Application response'
+      }
+    };
     
     if (documentNumber) {
       whereConditions.documentNumber = {
