@@ -104,6 +104,48 @@ export class ScrapingService {
     }
   }
 
+  private async smartWaitForPageLoad(documentCount: number): Promise<void> {
+    if (!this.page) return;
+
+    // If we have 4 or more documents, use normal wait
+    if (documentCount >= 4) {
+      console.log(`Page has ${documentCount} documents (>=4), using normal wait.`);
+      await this.page.waitForTimeout(this.config.timeouts.mediumDelay);
+      return;
+    }
+
+    console.log(`Page has only ${documentCount} documents (<4), implementing smart wait mechanism...`);
+    
+    const maxWaitTime = 15000; // 15 seconds maximum
+    const startTime = Date.now();
+    
+    try {
+      // Wait for the table to be stable (no more loading indicators)
+      await this.page.waitForFunction(() => {
+        // Check if there are any loading indicators or spinners
+        const loadingElements = document.querySelectorAll('[class*="loading"], [class*="spinner"], [class*="loader"]');
+        return loadingElements.length === 0;
+      }, { timeout: maxWaitTime });
+      
+      const elapsedTime = Date.now() - startTime;
+      console.log(`Page loaded in ${elapsedTime}ms, continuing immediately.`);
+      
+    } catch (error) {
+      // If the function times out, wait for the remaining time
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, maxWaitTime - elapsedTime);
+      
+      if (remainingTime > 0) {
+        console.log(`Page load detection timed out, waiting remaining ${remainingTime}ms...`);
+        await this.page.waitForTimeout(remainingTime);
+      }
+    }
+    
+    // Additional small delay to ensure page is fully stable
+    await this.page.waitForTimeout(1000);
+    console.log("Smart wait completed, proceeding to next page.");
+  }
+
   private async mapCurrentPageData(): Promise<ScrapedDocumentData[]> {
     if (!this.page) throw new Error('Page not initialized');
 
@@ -676,8 +718,12 @@ export class ScrapingService {
             break;
           }
           
-          // Step 5: Go to next page
-          console.log(`Step 5: Moving to page ${currentPage + 1}...`);
+          // Step 5: Smart wait before moving to next page
+          console.log(`Step 5: Smart wait before moving to page ${currentPage + 1}...`);
+          await this.smartWaitForPageLoad(pageDocuments.length);
+          
+          // Step 6: Go to next page
+          console.log(`Step 6: Moving to page ${currentPage + 1}...`);
           const movedToNext = await this.goToNextPage();
           
           if (!movedToNext) {
