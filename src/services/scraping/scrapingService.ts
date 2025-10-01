@@ -337,11 +337,11 @@ export class ScrapingService {
   }
 
   private async shouldSkipDocument(documentData: ScrapedDocumentData): Promise<boolean> {
-    // Filter 1: Skip if sender name contains "F2X S.A.S."
-    if (documentData.senderName?.includes('F2X S.A.S.')) {
-      console.log(`Filtered out - Sender is F2X S.A.S.: ${documentData.senderName}`);
-      return true;
-    }
+    // Filter 1: Skip if sender name contains "F2X S.A.S." - DISABLED to allow F2X downloads
+    // if (documentData.senderName?.includes('F2X S.A.S.')) {
+    //   console.log(`Filtered out - Sender is F2X S.A.S.: ${documentData.senderName}`);
+    //   return true;
+    // }
 
     // Filter 2: Skip if document type contains "Application response" (column 6)
     if (documentData.documentType?.includes('Application response')) {

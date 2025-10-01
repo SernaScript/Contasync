@@ -13,7 +13,8 @@ import {
   Download,
   FileText,
   CreditCard,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Bot
 } from "lucide-react"
 
 const mainNavigation = [
@@ -26,6 +27,11 @@ const mainNavigation = [
     name: "Descarga de Facturas",
     href: "/invoice-downloads",
     icon: Download,
+  },
+  {
+    name: "Automatización F2X",
+    href: "/services/f2x-automation",
+    icon: Bot,
   },
   {
     name: "Migrar Facturas",
