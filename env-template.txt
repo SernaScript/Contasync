@@ -64,3 +64,5 @@ JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 # Configuración de Siigo (si es necesario)
 # SIGIO_API_URL="https://api.siigo.com"
 # SIGIO_API_VERSION="v1"
+
+

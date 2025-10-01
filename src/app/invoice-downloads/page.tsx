@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Download, 
   Eye,
@@ -65,7 +64,6 @@ export default function InvoiceDownloadsPage() {
   const [downloads, setDownloads] = useState<InvoiceDownload[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("download");
   const [scrapingForm, setScrapingForm] = useState<ScrapingForm>({
     token: '',
     startDate: '',
@@ -90,6 +88,7 @@ export default function InvoiceDownloadsPage() {
     senderNit: ''
   });
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  const [showScrapingModal, setShowScrapingModal] = useState(false);
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -259,6 +258,7 @@ export default function InvoiceDownloadsPage() {
         
         setDownloads(convertedDownloads);
         loadDocuments();
+        setShowScrapingModal(false); // Cerrar modal después del éxito
       } else {
         const errorMessage = result.message || result.error || 'Error desconocido';
         setScrapingResult({
@@ -276,6 +276,11 @@ export default function InvoiceDownloadsPage() {
     } finally {
       setIsScraping(false);
     }
+  };
+
+  const handleOpenScrapingModal = () => {
+    setShowScrapingModal(true);
+    setScrapingResult(null);
   };
 
   const getStatusIcon = (status: string) => {
@@ -362,25 +367,8 @@ export default function InvoiceDownloadsPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="download" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Descarga de Facturas
-            </TabsTrigger>
-            <TabsTrigger value="scraping" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Configuración de Scraping
-            </TabsTrigger>
-            <TabsTrigger value="visualization" className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Visualización de Facturas
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Download Tab */}
-          <TabsContent value="download" className="space-y-4">
+        {/* Main Content */}
+        <div className="space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -390,23 +378,33 @@ export default function InvoiceDownloadsPage() {
                       Descarga facturas del sistema SIIGO automáticamente
                     </CardDescription>
                   </div>
-                  <Button 
-                    onClick={handleDownloadInvoices}
-                    disabled={isDownloading}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {isDownloading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Descargando...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4 mr-2" />
-                        Descargar Facturas
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleDownloadInvoices}
+                      disabled={isDownloading}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Descargando...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Descargar Facturas
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={handleOpenScrapingModal}
+                      disabled={isScraping}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Migrar información DIAN
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -628,147 +626,135 @@ export default function InvoiceDownloadsPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+        </div>
 
-          {/* Scraping Configuration Tab */}
-          <TabsContent value="scraping" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración de Scraping DIAN</CardTitle>
-                <CardDescription>
+        {/* Modal de Configuración de Scraping */}
+        {showScrapingModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+            <div className="bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Migrar información DIAN
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowScrapingModal(false)}
+                  className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              <div className="space-y-8">
+                <p className="text-lg text-gray-600">
                   Configura los parámetros para descargar documentos desde la DIAN automáticamente
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Three column layout */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Column 1: Date Range */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate">Fecha de Inicio</Label>
-                        <DatePicker
-                          date={datePickerState.startDate}
-                          onDateChange={handleStartDateChange}
-                          placeholder="Selecciona fecha de inicio"
-                          disabled={isScraping}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="endDate">Fecha de Fin</Label>
-                        <DatePicker
-                          date={datePickerState.endDate}
-                          onDateChange={handleEndDateChange}
-                          placeholder="Selecciona fecha de fin"
-                          disabled={isScraping}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Column 2: URL */}
-                    <div className="space-y-2">
-                      <Label htmlFor="token">URL de Autenticación DIAN</Label>
-                      <Input
-                        id="token"
-                        type="text"
-                        value={scrapingForm.token}
-                        onChange={(e) => setScrapingForm(prev => ({
-                          ...prev,
-                          token: e.target.value
-                        }))}
-                        placeholder="https://catalogo-vpfe.dian.gov.co/User/AuthToken?pk=10910094%7C70322015&rk=900698993&token=82dadb26-4c96-4da7-9967-ec4a219c40c5"
+                </p>
+                
+                {/* Three column layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Column 1: Date Range */}
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="startDate" className="text-base font-medium">Fecha de Inicio</Label>
+                      <DatePicker
+                        date={datePickerState.startDate}
+                        onDateChange={handleStartDateChange}
+                        placeholder="Selecciona fecha de inicio"
                         disabled={isScraping}
-                        className="h-10"
                       />
-                      <p className="text-xs text-gray-500">
-                        Ingresa la URL completa de autenticación de la DIAN
-                      </p>
                     </div>
                     
-                    {/* Column 3: Action Button */}
-                    <div className="flex items-end">
-                      <Button 
-                        onClick={handleScraping}
-                        disabled={isScraping || !scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate}
-                        className="w-full h-10 bg-green-600 hover:bg-green-700"
-                      >
-                        {isScraping ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Ejecutando Scraping...
-                          </>
-                        ) : (
-                          <>
-                            <Download className="h-4 w-4 mr-2" />
-                            Ejecutar Scraping
-                          </>
-                        )}
-                      </Button>
+                    <div className="space-y-3">
+                      <Label htmlFor="endDate" className="text-base font-medium">Fecha de Fin</Label>
+                      <DatePicker
+                        date={datePickerState.endDate}
+                        onDateChange={handleEndDateChange}
+                        placeholder="Selecciona fecha de fin"
+                        disabled={isScraping}
+                      />
                     </div>
                   </div>
                   
-                  {/* Scraping Result */}
-                  {scrapingResult && (
-                    <div className="mt-4 p-4 rounded-lg border">
-                      <div className={`flex items-center gap-2 mb-2 ${
-                        scrapingResult.success ? 'text-green-700' : 'text-red-700'
-                      }`}>
-                        {scrapingResult.success ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4" />
-                        )}
-                        <span className="font-medium text-sm">
-                          {scrapingResult.message}
-                        </span>
-                      </div>
-                      
-                      {scrapingResult.downloadedFiles && scrapingResult.downloadedFiles.length > 0 && (
-                        <div className="mt-3">
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">
-                            Archivos descargados ({scrapingResult.downloadedFiles.length}):
-                          </h4>
-                          <div className="space-y-1">
-                            {scrapingResult.downloadedFiles.map((file, index) => (
-                              <div key={index} className="text-xs text-gray-600 flex items-center gap-2">
-                                <FileText className="h-3 w-3" />
-                                {file.filename} ({(file.size / 1024).toFixed(1)} KB)
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                  {/* Column 2: URL */}
+                  <div className="space-y-3">
+                    <Label htmlFor="token" className="text-base font-medium">URL de Autenticación DIAN</Label>
+                    <Input
+                      id="token"
+                      type="text"
+                      value={scrapingForm.token}
+                      onChange={(e) => setScrapingForm(prev => ({
+                        ...prev,
+                        token: e.target.value
+                      }))}
+                      placeholder="https://catalogo-vpfe.dian.gov.co/User/AuthToken?pk=10910094%7C70322015&rk=900698993&token=82dadb26-4c96-4da7-9967-ec4a219c40c5"
+                      disabled={isScraping}
+                      className="h-12 text-sm"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Ingresa la URL completa de autenticación de la DIAN
+                    </p>
+                  </div>
+                  
+                  {/* Column 3: Action Button */}
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={handleScraping}
+                      disabled={isScraping || !scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate}
+                      className="w-full h-14 bg-green-600 hover:bg-green-700 text-base font-medium"
+                    >
+                      {isScraping ? (
+                        <>
+                          <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
+                          Ejecutando Scraping...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-5 w-5 mr-3" />
+                          Ejecutar Scraping
+                        </>
                       )}
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Scraping Result */}
+                {scrapingResult && (
+                  <div className="mt-6 p-6 rounded-lg border-2">
+                    <div className={`flex items-center gap-3 mb-4 ${
+                      scrapingResult.success ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {scrapingResult.success ? (
+                        <CheckCircle className="h-6 w-6" />
+                      ) : (
+                        <AlertCircle className="h-6 w-6" />
+                      )}
+                      <span className="font-semibold text-base">
+                        {scrapingResult.message}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Visualization Tab */}
-          <TabsContent value="visualization" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Visualización de Facturas</CardTitle>
-                <CardDescription>
-                  Visualiza y analiza tus facturas descargadas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Módulo de Visualización Próximamente
-                  </h3>
-                  <p className="text-gray-600">
-                    Esta sección contendrá funcionalidades de visualización y análisis de facturas
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                    
+                    {scrapingResult.downloadedFiles && scrapingResult.downloadedFiles.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-base font-semibold text-gray-700 mb-3">
+                          Archivos descargados ({scrapingResult.downloadedFiles.length}):
+                        </h4>
+                        <div className="space-y-2">
+                          {scrapingResult.downloadedFiles.map((file, index) => (
+                            <div key={index} className="text-sm text-gray-600 flex items-center gap-3 p-2 bg-gray-50 rounded">
+                              <FileText className="h-4 w-4" />
+                              {file.filename} ({(file.size / 1024).toFixed(1)} KB)
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   )
