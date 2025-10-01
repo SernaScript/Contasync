@@ -24,15 +24,6 @@ const AUTOMATION_SERVICES = [
     bgColor: 'bg-green-50'
   },
   {
-    id: 'invoice-automation',
-    title: 'Automatización de Facturas',
-    description: 'Procesa facturas con IA',
-    icon: FileText,
-    href: '/services/invoice-automation',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50'
-  },
-  {
     id: 'accounting-agent',
     title: 'Agente IA',
     description: 'Contabilización automática',

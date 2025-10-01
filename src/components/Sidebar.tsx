@@ -10,10 +10,10 @@ import {
   Settings, 
   BarChart3,
   Users,
-  Database,
   Download,
   FileText,
-  CreditCard
+  CreditCard,
+  ArrowRightLeft
 } from "lucide-react"
 
 const mainNavigation = [
@@ -28,9 +28,9 @@ const mainNavigation = [
     icon: Download,
   },
   {
-    name: "Gestión de Facturas",
-    href: "/services/invoice-automation",
-    icon: FileText,
+    name: "Migrar Facturas",
+    href: "/migrate-invoices",
+    icon: ArrowRightLeft,
   },
   {
     name: "Reportes",
@@ -41,11 +41,6 @@ const mainNavigation = [
     name: "Planes",
     href: "/plans",
     icon: CreditCard,
-  },
-  {
-    name: "Base de Datos",
-    href: "/database",
-    icon: Database,
   },
   {
     name: "Configuración",

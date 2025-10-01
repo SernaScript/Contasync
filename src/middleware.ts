@@ -23,9 +23,8 @@ const PROTECTED_ROUTES: Record<string, { resource: string; action: string }> = {
   '/settings': { resource: 'settings', action: 'VIEW' },
   '/users': { resource: 'users', action: 'VIEW' },
   '/reports': { resource: 'reports', action: 'VIEW' },
-  '/database': { resource: 'database', action: 'VIEW' },
   '/services/dian-downloads': { resource: 'invoice-downloads', action: 'VIEW' },
-  '/services/invoice-automation': { resource: 'invoice-management', action: 'VIEW' },
+  '/migrate-invoices': { resource: 'migrate-invoices', action: 'VIEW' },
 }
 
 // Admin-only routes

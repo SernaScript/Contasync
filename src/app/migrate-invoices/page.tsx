@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { 
-  Download, 
+  ArrowRightLeft, 
   Eye,
   FileText,
   Calendar,
@@ -24,17 +24,17 @@ import {
   ChevronRight
 } from "lucide-react"
 
-interface InvoiceDownload {
+interface InvoiceMigration {
   id: string;
   documentNumber: string;
   date: string;
   totalValue: string;
-  status: 'pending' | 'downloaded' | 'failed';
+  status: 'pending' | 'migrated' | 'failed';
   senderName: string;
   senderNit: string;
   type: string;
-  downloadPath?: string;
-  downloadDate?: string;
+  migrationPath?: string;
+  migrationDate?: string;
 }
 
 interface ScrapingForm {
@@ -51,20 +51,20 @@ interface DatePickerState {
 interface ScrapingResult {
   success: boolean;
   message: string;
-  downloadedFiles?: DownloadedFile[];
+  migratedFiles?: MigratedFile[];
   error?: string;
 }
 
-interface DownloadedFile {
+interface MigratedFile {
   filename: string;
   size: number;
-  downloadPath: string;
-  downloadDate: string;
+  migrationPath: string;
+  migrationDate: string;
 }
 
-export default function InvoiceDownloadsPage() {
-  const [downloads, setDownloads] = useState<InvoiceDownload[]>([]);
-  const [isDownloading, setIsDownloading] = useState(false);
+export default function MigrateInvoicesPage() {
+  const [migrations, setMigrations] = useState<InvoiceMigration[]>([]);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [scrapingForm, setScrapingForm] = useState<ScrapingForm>({
     token: '',
@@ -114,7 +114,7 @@ export default function InvoiceDownloadsPage() {
       const result = await response.json();
       
       if (result.success) {
-        setDownloads(result.data.documents);
+        setMigrations(result.data.documents);
         setPagination(result.data.pagination);
         
         // Detectar si hay filtros activos
@@ -179,11 +179,11 @@ export default function InvoiceDownloadsPage() {
     });
   };
 
-  const handleDownloadInvoices = async () => {
-    setIsDownloading(true);
+  const handleMigrateInvoices = async () => {
+    setIsMigrating(true);
     
     setTimeout(() => {
-      setIsDownloading(false);
+      setIsMigrating(false);
       loadDocuments();
     }, 2000);
   };
@@ -243,22 +243,22 @@ export default function InvoiceDownloadsPage() {
         setScrapingResult({
           success: true,
           message: result.message,
-          downloadedFiles: result.data.downloadedFiles
+          migratedFiles: result.data.downloadedFiles
         });
         
-        // Convert scraping results to invoice downloads format
-        const convertedDownloads: InvoiceDownload[] = result.data.downloadedFiles.map((file: DownloadedFile, index: number) => ({
+        // Convert scraping results to invoice migrations format
+        const convertedMigrations: InvoiceMigration[] = result.data.downloadedFiles.map((file: MigratedFile, index: number) => ({
           id: (index + 1).toString(),
           documentNumber: file.filename.replace('.pdf', '').replace('.xml', ''),
-          date: new Date(file.downloadDate).toISOString().split('T')[0],
+          date: new Date(file.migrationDate).toISOString().split('T')[0],
           totalValue: 'N/A', // Amount not available from scraping
-          status: 'downloaded' as const,
+          status: 'migrated' as const,
           senderName: 'DIAN',
           senderNit: 'N/A',
           type: 'Documento'
         }));
         
-        setDownloads(convertedDownloads);
+        setMigrations(convertedMigrations);
         loadDocuments();
         setShowScrapingModal(false); // Cerrar modal después del éxito
       } else {
@@ -287,7 +287,7 @@ export default function InvoiceDownloadsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'downloaded':
+      case 'migrated':
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'failed':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
@@ -300,8 +300,8 @@ export default function InvoiceDownloadsPage() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'downloaded':
-        return 'Descargado';
+      case 'migrated':
+        return 'Migrado';
       case 'failed':
         return 'Error';
       case 'pending':
@@ -313,7 +313,7 @@ export default function InvoiceDownloadsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'downloaded':
+      case 'migrated':
         return 'bg-green-100 text-green-800';
       case 'failed':
         return 'bg-red-100 text-red-800';
@@ -353,18 +353,28 @@ export default function InvoiceDownloadsPage() {
     return `${day}/${month}/${year}`;
   };
 
+  const handleMigrate = (invoice: InvoiceMigration) => {
+    console.log('Migrating invoice:', invoice);
+    // Aquí implementarías la lógica de migración
+  };
+
+  const handlePreview = (invoice: InvoiceMigration) => {
+    console.log('Previewing invoice:', invoice);
+    // Aquí implementarías la lógica de previsualización
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-2">
-          <Download className="h-8 w-8 text-blue-500" />
+          <ArrowRightLeft className="h-8 w-8 text-blue-500" />
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Descarga de Facturas
+              Migrar Facturas
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Descarga y gestiona tus facturas desde SIIGO
+              Migra y previsualiza tus facturas desde SIIGO
             </p>
           </div>
         </div>
@@ -375,26 +385,26 @@ export default function InvoiceDownloadsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Descarga de Facturas</CardTitle>
+                    <CardTitle>Migración de Facturas</CardTitle>
                     <CardDescription>
-                      Descarga facturas del sistema SIIGO automáticamente
+                      Migra facturas del sistema SIIGO automáticamente
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
                     <Button 
-                      onClick={handleDownloadInvoices}
-                      disabled={isDownloading}
+                      onClick={handleMigrateInvoices}
+                      disabled={isMigrating}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
-                      {isDownloading ? (
+                      {isMigrating ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Descargando...
+                          Migrando...
                         </>
                       ) : (
                         <>
-                          <Download className="h-4 w-4 mr-2" />
-                          Descargar Facturas
+                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                          Migrar Facturas
                         </>
                       )}
                     </Button>
@@ -420,7 +430,7 @@ export default function InvoiceDownloadsPage() {
                       Obteniendo documentos de la base de datos
                     </p>
                   </div>
-                ) : downloads.length === 0 ? (
+                ) : migrations.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -438,7 +448,7 @@ export default function InvoiceDownloadsPage() {
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium">Documentos Disponibles ({downloads.length})</h3>
+                      <h3 className="text-lg font-medium">Documentos Disponibles ({migrations.length})</h3>
                       <div className="flex items-center gap-2">
                         <Button 
                           variant="outline" 
@@ -520,12 +530,12 @@ export default function InvoiceDownloadsPage() {
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Nº Documento</th>
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Valor Total</th>
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Estado</th>
-                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Ruta de Descarga</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Ruta de Migración</th>
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Acciones</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {downloads.map((invoice) => (
+                          {migrations.map((invoice) => (
                             <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
                               <td className="py-2 px-3 text-sm text-gray-600 font-medium">
                                 {formatDate(invoice.date)}
@@ -549,24 +559,35 @@ export default function InvoiceDownloadsPage() {
                                 </div>
                               </td>
                               <td className="py-2 px-3 text-sm text-gray-600">
-                                {invoice.downloadPath ? (
-                                  <div className="max-w-xs truncate" title={invoice.downloadPath}>
-                                    {invoice.downloadPath}
+                                {invoice.migrationPath ? (
+                                  <div className="max-w-xs truncate" title={invoice.migrationPath}>
+                                    {invoice.migrationPath}
                                   </div>
                                 ) : (
-                                  <span className="text-gray-400">No descargado</span>
+                                  <span className="text-gray-400">No migrado</span>
                                 )}
                               </td>
                               <td className="py-2 px-3">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-7 w-7 p-0"
-                                  disabled={!invoice.downloadPath}
-                                  title={invoice.downloadPath ? "Descargar archivo" : "Archivo no disponible"}
-                                >
-                                  <Download className="h-3 w-3" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => handleMigrate(invoice)}
+                                    title="Migrar factura"
+                                  >
+                                    <ArrowRightLeft className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => handlePreview(invoice)}
+                                    title="Previsualizar factura"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -666,7 +687,7 @@ export default function InvoiceDownloadsPage() {
               
               <div className="space-y-8">
                 <p className="text-lg text-gray-600">
-                  Configura los parámetros para descargar documentos desde la DIAN automáticamente
+                  Configura los parámetros para migrar documentos desde la DIAN automáticamente
                 </p>
                 
                 {/* Three column layout */}
@@ -724,12 +745,12 @@ export default function InvoiceDownloadsPage() {
                       {isScraping ? (
                         <>
                           <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
-                          Ejecutando Scraping...
+                          Ejecutando Migración...
                         </>
                       ) : (
                         <>
-                          <Download className="h-5 w-5 mr-3" />
-                          Ejecutar Scraping
+                          <ArrowRightLeft className="h-5 w-5 mr-3" />
+                          Ejecutar Migración
                         </>
                       )}
                     </Button>
@@ -752,13 +773,13 @@ export default function InvoiceDownloadsPage() {
                       </span>
                     </div>
                     
-                    {scrapingResult.downloadedFiles && scrapingResult.downloadedFiles.length > 0 && (
+                    {scrapingResult.migratedFiles && scrapingResult.migratedFiles.length > 0 && (
                       <div className="mt-4">
                         <h4 className="text-base font-semibold text-gray-700 mb-3">
-                          Archivos descargados ({scrapingResult.downloadedFiles.length}):
+                          Archivos migrados ({scrapingResult.migratedFiles.length}):
                         </h4>
                         <div className="space-y-2">
-                          {scrapingResult.downloadedFiles.map((file, index) => (
+                          {scrapingResult.migratedFiles.map((file, index) => (
                             <div key={index} className="text-sm text-gray-600 flex items-center gap-3 p-2 bg-gray-50 rounded">
                               <FileText className="h-4 w-4" />
                               {file.filename} ({(file.size / 1024).toFixed(1)} KB)
@@ -777,3 +798,4 @@ export default function InvoiceDownloadsPage() {
     </MainLayout>
   )
 }
+

@@ -273,7 +273,7 @@ export class ScrapingService {
         const documentUUID = doc.documentUUID || `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         // Use upsert to handle duplicates gracefully
-        await (this.prisma as any).scrapedDocument.upsert({
+        await this.prisma.scrapedDocument.upsert({
           where: {
             documentUUID: documentUUID
           },
@@ -323,7 +323,7 @@ export class ScrapingService {
     try {
       if (!documentUUID) return false;
       
-      const existingDocument = await (this.prisma as any).scrapedDocument.findUnique({
+      const existingDocument = await this.prisma.scrapedDocument.findUnique({
         where: {
           documentUUID: documentUUID
         }
@@ -366,7 +366,8 @@ export class ScrapingService {
       const updateData: any = {
         isDownloaded: true,
         downloadPath: downloadPath,
-        downloadDate: new Date()
+        downloadDate: new Date(),
+        updatedAt: new Date()
       };
 
       // Add extracted files info if available
@@ -375,30 +376,35 @@ export class ScrapingService {
         updateData.extractedFilesCount = extractedFiles.length;
       }
 
+      console.log(`Updating document as downloaded:`, {
+        documentUUID: documentData.documentUUID,
+        documentNumber: documentData.documentNumber,
+        downloadPath: downloadPath
+      });
+
       if (documentData.documentUUID) {
-        await (this.prisma as any).scrapedDocument.updateMany({
+        const result = await this.prisma.scrapedDocument.updateMany({
           where: {
             documentUUID: documentData.documentUUID
           },
-          data: {
-            isDownloaded: true,
-            downloadPath: downloadPath,
-            downloadDate: new Date(),
-            updatedAt: new Date()
-          }
+          data: updateData
         });
+        console.log(`Updated ${result.count} documents with UUID: ${documentData.documentUUID}`);
       } else {
         // Fallback to old method if UUID is not available
-        await (this.prisma as any).scrapedDocument.updateMany({
+        const result = await this.prisma.scrapedDocument.updateMany({
           where: {
             documentNumber: documentData.documentNumber,
             senderName: documentData.senderName
           },
           data: updateData
         });
+        console.log(`Updated ${result.count} documents with documentNumber: ${documentData.documentNumber}`);
       }
     } catch (error) {
       console.error('Error updating document as downloaded:', error);
+      console.error('Document data:', documentData);
+      console.error('Download path:', downloadPath);
     }
   }
 
