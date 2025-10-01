@@ -21,7 +21,8 @@ import {
   Key,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bot
 } from "lucide-react"
 
 interface InvoiceDownload {
@@ -405,6 +406,13 @@ export default function InvoiceDownloadsPage() {
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Migrar información DIAN
+                    </Button>
+                    <Button 
+                      onClick={() => window.location.href = '/services/f2x-automation'}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Bot className="h-4 w-4 mr-2" />
+                      Automatización F2X
                     </Button>
                   </div>
                 </div>

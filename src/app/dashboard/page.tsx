@@ -24,6 +24,15 @@ const AUTOMATION_SERVICES = [
     bgColor: 'bg-green-50'
   },
   {
+    id: 'f2x-automation',
+    title: 'Automatización F2X',
+    description: 'Descarga automática de facturas desde Flypass',
+    icon: Bot,
+    href: '/services/f2x-automation',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50'
+  },
+  {
     id: 'accounting-agent',
     title: 'Agente IA',
     description: 'Contabilización automática',
