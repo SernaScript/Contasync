@@ -93,6 +93,7 @@ export default function InvoiceDownloadsPage() {
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
   const [showScrapingModal, setShowScrapingModal] = useState(false);
   const [showXMLModal, setShowXMLModal] = useState(false);
+  const [isXMLModalAnimating, setIsXMLModalAnimating] = useState(false);
   const [xmlContent, setXmlContent] = useState<string>('');
   const [xmlFileName, setXmlFileName] = useState<string>('');
   const [supplierInfo, setSupplierInfo] = useState<{
@@ -108,6 +109,7 @@ export default function InvoiceDownloadsPage() {
     unitPrice: string;
     totalAmount: string;
   }[]>([]);
+  const [invoiceTotal, setInvoiceTotal] = useState<string>('0');
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -327,6 +329,23 @@ export default function InvoiceDownloadsPage() {
     }
   };
 
+  const openXMLModal = () => {
+    setShowXMLModal(true);
+
+    setTimeout(() => {
+      setIsXMLModalAnimating(true);
+    }, 100);
+  };
+
+  const closeXMLModal = () => {
+    setIsXMLModalAnimating(false);
+    setTimeout(() => {
+      setShowXMLModal(false);
+      setInvoiceLines([]);
+      setInvoiceTotal('0');
+    }, 500);
+  };
+
   const extractSupplierInfo = (xmlText: string) => {
     try {
       const parser = new DOMParser();
@@ -469,6 +488,31 @@ export default function InvoiceDownloadsPage() {
     }
   };
 
+  const extractInvoiceTotal = (xmlText: string) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      // Buscar la sección LegalMonetaryTotal
+      const legalMonetaryTotal = xmlDoc.querySelector('cac\\:LegalMonetaryTotal, LegalMonetaryTotal');
+      
+      if (!legalMonetaryTotal) {
+        console.log('No se encontró la sección LegalMonetaryTotal');
+        return '0';
+      }
+      
+      // Extraer el PayableAmount (total a pagar)
+      const payableAmountElement = legalMonetaryTotal.querySelector('cbc\\:PayableAmount, PayableAmount');
+      const payableAmount = payableAmountElement?.textContent?.trim() || '0';
+      
+      console.log('Extracted invoice total:', payableAmount);
+      return payableAmount;
+    } catch (error) {
+      console.error('Error extracting invoice total:', error);
+      return '0';
+    }
+  };
+
   const handleViewXML = async (pdfPath: string | undefined) => {
     if (!pdfPath) {
       console.error('No PDF path provided');
@@ -534,16 +578,21 @@ export default function InvoiceDownloadsPage() {
       // Extraer líneas de factura
       const invoiceLinesData = extractInvoiceLines(xmlText);
       
+      // Extraer total de la operación
+      const invoiceTotalData = extractInvoiceTotal(xmlText);
+      
       // Configurar el estado del modal
       setXmlContent(xmlText);
       setXmlFileName(xmlPath.split('/').pop() || 'documento.xml');
       setSupplierInfo(supplierData);
       setInvoiceLines(invoiceLinesData);
-      setShowXMLModal(true);
+      setInvoiceTotal(invoiceTotalData);
+      openXMLModal();
       
       console.log(`Successfully loaded XML: ${xmlPath}`);
       console.log('Extracted supplier info:', supplierData);
       console.log('Extracted invoice lines:', invoiceLinesData);
+      console.log('Extracted invoice total:', invoiceTotalData);
     } catch (error) {
       console.error('Error loading XML:', error);
       // Aquí podrías agregar una notificación de error al usuario
@@ -1046,149 +1095,174 @@ export default function InvoiceDownloadsPage() {
           </div>
         )}
 
-        {/* Modal de Visualización de XML */}
+        {/* Panel Lateral de Visualización de XML */}
         {showXMLModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-            <div className="bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Visualizador de XML
-                </h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowXMLModal(false);
-                    setInvoiceLines([]);
-                  }}
-                  className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
-                >
-                  ×
-                </Button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FileText className="h-4 w-4" />
-                  <span>Archivo: {xmlFileName}</span>
-                </div>
-                
-                {/* Información del Proveedor */}
-                {supplierInfo && (
-                  <div className="border rounded-lg overflow-hidden bg-blue-50">
-                    <div className="bg-blue-100 px-4 py-2 border-b">
-                      <h3 className="text-sm font-medium text-blue-800">Información del Proveedor</h3>
-                    </div>
-                    <div className="p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700 w-20">Nombre:</span>
-                        <span className="text-sm text-gray-900 font-semibold">{supplierInfo.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700 w-20">NIT:</span>
-                        <span className="text-sm text-gray-900">{supplierInfo.nit}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm font-medium text-gray-700 w-20">Dirección:</span>
-                        <span className="text-sm text-gray-900">{supplierInfo.address}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-700 w-20">Ciudad:</span>
-                        <span className="text-sm text-gray-900">{supplierInfo.city}</span>
-                      </div>
+            <div className={`fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-50 transform transition-all duration-500 ease-in-out ${
+              isXMLModalAnimating ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+            }`}>
+              <div className="flex flex-col h-full">
+                {/* Header del panel */}
+                <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-gray-600" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Visualizador de XML
+                      </h2>
+                      <p className="text-sm text-gray-500">{xmlFileName}</p>
                     </div>
                   </div>
-                )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={closeXMLModal}
+                    className="h-8 w-8 p-0 hover:bg-gray-100"
+                  >
+                    ×
+                  </Button>
+                </div>
 
-                {/* Líneas de Factura */}
-                {invoiceLines && invoiceLines.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden bg-green-50">
-                    <div className="bg-green-100 px-4 py-2 border-b">
-                      <h3 className="text-sm font-medium text-green-800">Líneas de Factura ({invoiceLines.length} items)</h3>
+                {/* Contenido del panel */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Información del Proveedor */}
+                  {supplierInfo && (
+                    <div className="border rounded-lg overflow-hidden bg-blue-50">
+                      <div className="bg-blue-100 px-3 py-2 border-b">
+                        <h3 className="text-sm font-medium text-blue-800">Información del Proveedor</h3>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16 mt-0.5">Nombre:</span>
+                          <span className="text-sm text-gray-900 font-semibold flex-1">{supplierInfo.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16">NIT:</span>
+                          <span className="text-sm text-gray-900">{supplierInfo.nit}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16 mt-0.5">Dirección:</span>
+                          <span className="text-sm text-gray-900 flex-1">{supplierInfo.address}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16">Ciudad:</span>
+                          <span className="text-sm text-gray-900">{supplierInfo.city}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full bg-white">
-                        <thead className="bg-green-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider border-b">
-                              #
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider border-b">
-                              Descripción
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-green-800 uppercase tracking-wider border-b">
-                              Cantidad
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-green-800 uppercase tracking-wider border-b">
-                              Precio Unit.
-                            </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-green-800 uppercase tracking-wider border-b">
-                              Total
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {invoiceLines.map((line, index) => (
-                            <tr key={line.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {line.id}
-                                </span>
+                  )}
+
+                  {/* Total de la Operación */}
+                  {invoiceTotal && invoiceTotal !== '0' && (
+                    <div className="border rounded-lg overflow-hidden bg-orange-50">
+                      <div className="bg-orange-100 px-3 py-2 border-b">
+                        <h3 className="text-sm font-medium text-orange-800">Total de la Operación</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-orange-900 mb-1">
+                            ${parseFloat(invoiceTotal).toLocaleString('es-CO')}
+                          </div>
+                          <div className="text-xs text-orange-700 font-medium">
+                            Total a Pagar (COP)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Líneas de Factura */}
+                  {invoiceLines && invoiceLines.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden bg-green-50">
+                      <div className="bg-green-100 px-3 py-2 border-b">
+                        <h3 className="text-sm font-medium text-green-800">Líneas de Factura ({invoiceLines.length} items)</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full bg-white text-xs">
+                          <thead className="bg-green-50">
+                            <tr>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-green-800 uppercase">
+                                #
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-green-800 uppercase">
+                                Descripción
+                              </th>
+                              <th className="px-2 py-2 text-right text-xs font-medium text-green-800 uppercase">
+                                Cant.
+                              </th>
+                              <th className="px-2 py-2 text-right text-xs font-medium text-green-800 uppercase">
+                                P. Unit.
+                              </th>
+                              <th className="px-2 py-2 text-right text-xs font-medium text-green-800 uppercase">
+                                Total
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {invoiceLines.map((line, index) => (
+                              <tr key={line.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="px-2 py-2 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    {line.id}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2">
+                                  <div className="text-xs font-medium text-gray-900 max-w-[160px] break-words">
+                                    {line.description}
+                                  </div>
+                                </td>
+                                <td className="px-2 py-2 text-right whitespace-nowrap">
+                                  <span className="text-xs text-gray-900">
+                                    {parseFloat(line.quantity || '0').toLocaleString('es-CO')}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2 text-right whitespace-nowrap">
+                                  <span className="text-xs text-gray-900">
+                                    ${parseFloat(line.unitPrice || '0').toLocaleString('es-CO')}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2 text-right whitespace-nowrap">
+                                  <span className="text-xs font-semibold text-gray-900">
+                                    ${parseFloat(line.totalAmount || '0').toLocaleString('es-CO')}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-green-50">
+                            <tr>
+                              <td colSpan={4} className="px-2 py-2 text-right text-xs font-medium text-green-800">
+                                Total:
                               </td>
-                              <td className="px-4 py-3">
-                                <div className="text-sm font-medium text-gray-900 max-w-md">
-                                  {line.description}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-right whitespace-nowrap">
-                                <span className="text-sm text-gray-900">
-                                  {parseFloat(line.quantity || '0').toLocaleString('es-CO')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-right whitespace-nowrap">
-                                <span className="text-sm text-gray-900">
-                                  ${parseFloat(line.unitPrice || '0').toLocaleString('es-CO')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-right whitespace-nowrap">
-                                <span className="text-sm font-semibold text-gray-900">
-                                  ${parseFloat(line.totalAmount || '0').toLocaleString('es-CO')}
+                              <td className="px-2 py-2 text-right whitespace-nowrap">
+                                <span className="text-xs font-bold text-green-900">
+                                  ${invoiceLines.reduce((sum, line) => sum + parseFloat(line.totalAmount || '0'), 0).toLocaleString('es-CO')}
                                 </span>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                        <tfoot className="bg-green-50">
-                          <tr>
-                            <td colSpan={4} className="px-4 py-3 text-right text-sm font-medium text-green-800">
-                              Total:
-                            </td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap">
-                              <span className="text-sm font-bold text-green-900">
-                                ${invoiceLines.reduce((sum, line) => sum + parseFloat(line.totalAmount || '0'), 0).toLocaleString('es-CO')}
-                              </span>
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Contenido XML colapsable */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-3 py-2 border-b">
+                      <h3 className="text-sm font-medium text-gray-700">Contenido XML</h3>
+                    </div>
+                    <div className="p-3 bg-gray-900 text-green-400 font-mono text-xs overflow-auto max-h-60">
+                      <pre className="whitespace-pre-wrap break-words">
+                        {xmlContent}
+                      </pre>
                     </div>
                   </div>
-                )}
-                
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2 border-b">
-                    <h3 className="text-sm font-medium text-gray-700">Contenido XML</h3>
-                  </div>
-                  <div className="p-4 bg-gray-900 text-green-400 font-mono text-xs overflow-auto max-h-[50vh]">
-                    <pre className="whitespace-pre-wrap break-words">
-                      {xmlContent}
-                    </pre>
-                  </div>
                 </div>
-                
-                <div className="flex justify-end gap-2">
+
+                {/* Footer con botones */}
+                <div className="border-t bg-gray-50 p-4 flex justify-end gap-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => {
                       // Función para formatear el XML
                       try {
@@ -1202,10 +1276,11 @@ export default function InvoiceDownloadsPage() {
                       }
                     }}
                   >
-                    Formatear XML
+                    Formatear
                   </Button>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => {
                       // Descargar el XML
                       const blob = new Blob([xmlContent], { type: 'application/xml' });
@@ -1219,21 +1294,19 @@ export default function InvoiceDownloadsPage() {
                       URL.revokeObjectURL(url);
                     }}
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar XML
+                    <Download className="h-3 w-3 mr-1" />
+                    Descargar
                   </Button>
                   <Button
-                    onClick={() => {
-                      setShowXMLModal(false);
-                      setInvoiceLines([]);
-                    }}
+                    size="sm"
+                    onClick={closeXMLModal}
+                    className="bg-gray-600 hover:bg-gray-700 text-white"
                   >
                     Cerrar
                   </Button>
                 </div>
               </div>
             </div>
-          </div>
         )}
       </div>
     </MainLayout>
