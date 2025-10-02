@@ -30,9 +30,26 @@ export interface ProcessedFile {
 }
 
 export interface ScrapingProgress {
-  status: 'starting' | 'navigating' | 'downloading' | 'completed' | 'error';
+  status: 'starting' | 'navigating' | 'mapping' | 'downloading' | 'completed' | 'error';
   message: string;
   currentPage?: number;
   totalFiles?: number;
   downloadedFiles?: number;
+  mappedDocuments?: number;
+}
+
+export interface ScrapedDocumentData {
+  documentUUID?: string; 
+  reception?: string;
+  documentDate?: string;
+  prefix?: string;
+  documentNumber?: string;
+  documentType?: string;
+  senderNit?: string;
+  senderName?: string;
+  receiverNit?: string;
+  receiverName?: string;
+  result?: string;
+  radianStatus?: string;
+  totalValue?: string;
 }

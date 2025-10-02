@@ -59,12 +59,6 @@ export default function HomePage() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <Link 
-                href="/services/invoice-automation" 
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
-              >
-                Facturas
-              </Link>
-              <Link 
                 href="/services/dian-downloads" 
                 className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
               >
@@ -117,13 +111,6 @@ export default function HomePage() {
           {isMobileMenuOpen && (
             <div className="md:hidden mt-4 pb-4 border-t border-gray-200">
               <div className="flex flex-col gap-4 pt-4">
-                <Link 
-                  href="/services/invoice-automation" 
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Facturas
-                </Link>
                 <Link 
                   href="/services/dian-downloads" 
                   className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
@@ -240,12 +227,6 @@ export default function HomePage() {
                   Integración con sistemas contables
                 </li>
               </ul>
-              <Link 
-                href="/services/invoice-automation"
-                className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700"
-              >
-                Saber más <ArrowRight className="w-4 h-4" />
-              </Link>
             </div>
 
             {/* DIAN Downloads */}

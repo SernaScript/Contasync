@@ -1,0 +1,69 @@
+# Archivo de plantilla para variables de entorno
+# Copia este archivo como .env y configura los valores apropiados
+
+# Base de datos PostgreSQL con esquema public
+# URL principal para la aplicación (puede usar pool de conexiones)
+DATABASE_URL="postgresql://usuario:contraseña@localhost:5432/contasync_db?schema=public&pgbouncer=true&connection_limit=1"
+
+# URL directa para migraciones (sin pool de conexiones)
+DIRECT_URL="postgresql://usuario:contraseña@localhost:5432/contasync_db?schema=public"
+
+# Configuraciones alternativas según el entorno:
+
+# Para desarrollo local (sin pool):
+# DATABASE_URL="postgresql://usuario:contraseña@localhost:5432/contasync_db?schema=public"
+# DIRECT_URL="postgresql://usuario:contraseña@localhost:5432/contasync_db?schema=public"
+
+# Para producción con Supabase:
+# DATABASE_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?schema=public&pgbouncer=true&connection_limit=1"
+# DIRECT_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?schema=public"
+
+# Para producción con Railway:
+# DATABASE_URL="postgresql://postgres:[password]@[host]:[port]/railway?schema=public&pgbouncer=true&connection_limit=1"
+# DIRECT_URL="postgresql://postgres:[password]@[host]:[port]/railway?schema=public"
+
+# Para producción con Neon:
+# DATABASE_URL="postgresql://[user]:[password]@[host]/[database]?schema=public&sslmode=require&pgbouncer=true&connection_limit=1"
+# DIRECT_URL="postgresql://[user]:[password]@[host]/[database]?schema=public&sslmode=require"
+
+# Configuración de la aplicación
+NODE_ENV="development"
+PORT=3005
+NEXT_PUBLIC_API_BASE_URL="/api"
+
+# Autenticación JWT
+JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+
+# Configuración de cookies (para producción)
+# COOKIE_SECRET="your-cookie-secret-key"
+
+# Configuración de CORS (si es necesario)
+# CORS_ORIGIN="http://localhost:3005"
+
+# Configuración de logging
+# LOG_LEVEL="info"
+
+# Configuración de rate limiting (si es necesario)
+# RATE_LIMIT_MAX=100
+# RATE_LIMIT_WINDOW_MS=900000
+
+# Configuración de email (si es necesario)
+# SMTP_HOST="smtp.gmail.com"
+# SMTP_PORT=587
+# SMTP_USER="your-email@gmail.com"
+# SMTP_PASS="your-app-password"
+
+# Configuración de archivos (si es necesario)
+# UPLOAD_DIR="./uploads"
+# MAX_FILE_SIZE=5242880
+
+# Configuración de scraping (si es necesario)
+# SCRAPING_DELAY=1000
+# SCRAPING_TIMEOUT=30000
+
+# Configuración de Siigo (si es necesario)
+# SIGIO_API_URL="https://api.siigo.com"
+# SIGIO_API_VERSION="v1"
+
+
+

@@ -218,3 +218,30 @@ model SiigoCredentials {
 
   @@map("siigo_credentials")
 }
+
+// Scraping Models
+model ScrapedDocument {
+  id                String   @id @default(cuid())
+  documentUUID      String   @unique // UUID del botón de descarga (nombre del archivo)
+  reception         String?  // Recepción
+  documentDate      String?  // Fecha
+  prefix            String?  // Prefijo
+  documentNumber    String?  // Nº documento
+  documentType      String?  // Tipo
+  senderNit         String?  // NIT Emisor
+  senderName        String?  // Emisor
+  receiverNit       String?  // NIT Receptor
+  receiverName      String?  // Receptor
+  result            String?  // Resultado
+  radianStatus      String?  // Estado RADIAN
+  totalValue        String?  // Valor Total
+  isDownloaded      Boolean  @default(false)
+  downloadPath      String?
+  downloadDate      DateTime?
+  extractedFiles    String?  // JSON string with array of extracted file paths
+  extractedFilesCount Int?   // Number of extracted files
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("scraped_documents")
+}

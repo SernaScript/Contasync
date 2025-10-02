@@ -22,12 +22,29 @@ export interface ScrapingConfig {
     tbody: string;
     tableRows: string;
     downloadButton: string;
+    downloadButtonUUID: string; 
+    emisorColumn: string;
+    responseColumn: string;
+    // Table column selectors
+    receptionColumn: string;
+    documentDateColumn: string;
+    prefixColumn: string;
+    documentNumberColumn: string;
+    documentTypeColumn: string;
+    senderNitColumn: string;
+    senderNameColumn: string;
+    receiverNitColumn: string;
+    receiverNameColumn: string;
+    resultColumn: string;
+    radianStatusColumn: string;
+    totalValueColumn: string;
     nextButton: string;
     dateRangePicker: string;
     startDateInput: string;
     endDateInput: string;
     senderCode: string;
     submitButton: string;
+    recordsPerPageSelect: string;
   };
 }
 
@@ -57,11 +74,28 @@ export const defaultScrapingConfig: ScrapingConfig = {
     tbody: "tbody",
     tableRows: "tbody tr",
     downloadButton: "td:first-child .fa-download",
+    downloadButtonUUID: "td:first-child button[data-id]", 
+    emisorColumn: "td:nth-child(8)", 
+    responseColumn: "td:nth-child(6)",
+    // Table column selectors (based on HTML structure)
+    receptionColumn: "td:nth-child(2)",      
+    documentDateColumn: "td:nth-child(3)",   
+    prefixColumn: "td:nth-child(4)",         
+    documentNumberColumn: "td:nth-child(5)", 
+    documentTypeColumn: "td:nth-child(6)",   
+    senderNitColumn: "td:nth-child(7)",      
+    senderNameColumn: "td:nth-child(8)",     
+    receiverNitColumn: "td:nth-child(9)",    
+    receiverNameColumn: "td:nth-child(10)", 
+    resultColumn: "td:nth-child(11)",        
+    radianStatusColumn: "td:nth-child(12)",  
+    totalValueColumn: "td:nth-child(13)",    
     nextButton: "#tableDocuments_next",
     dateRangePicker: "#dashboard-report-range",
     startDateInput: "input[name='daterangepicker_start']",
     endDateInput: "input[name='daterangepicker_end']",
     senderCode: "#SenderCode",
-    submitButton: "//button[@type='submit']"
+    submitButton: "//button[@type='submit']",
+    recordsPerPageSelect: "label:has-text('Mostrar') select"
   }
 };

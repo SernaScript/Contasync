@@ -24,11 +24,11 @@ const AUTOMATION_SERVICES = [
     bgColor: 'bg-green-50'
   },
   {
-    id: 'invoice-automation',
-    title: 'Automatización de Facturas',
-    description: 'Procesa facturas con IA',
-    icon: FileText,
-    href: '/services/invoice-automation',
+    id: 'f2x-automation',
+    title: 'Automatización F2X',
+    description: 'Descarga automática de facturas desde Flypass',
+    icon: Bot,
+    href: '/services/f2x-automation',
     color: 'text-blue-600',
     bgColor: 'bg-blue-50'
   },

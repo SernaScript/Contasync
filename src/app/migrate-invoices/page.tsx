@@ -1,0 +1,801 @@
+"use client"
+
+import React, { useState, useEffect } from 'react';
+import { MainLayout } from "@/components/MainLayout"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
+import { 
+  ArrowRightLeft, 
+  Eye,
+  FileText,
+  Calendar,
+  Filter,
+  Search,
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Key,
+  Settings,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react"
+
+interface InvoiceMigration {
+  id: string;
+  documentNumber: string;
+  date: string;
+  totalValue: string;
+  status: 'pending' | 'migrated' | 'failed';
+  senderName: string;
+  senderNit: string;
+  type: string;
+  migrationPath?: string;
+  migrationDate?: string;
+}
+
+interface ScrapingForm {
+  token: string; // This will contain the full URL
+  startDate: string;
+  endDate: string;
+}
+
+interface DatePickerState {
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+}
+
+interface ScrapingResult {
+  success: boolean;
+  message: string;
+  migratedFiles?: MigratedFile[];
+  error?: string;
+}
+
+interface MigratedFile {
+  filename: string;
+  size: number;
+  migrationPath: string;
+  migrationDate: string;
+}
+
+export default function MigrateInvoicesPage() {
+  const [migrations, setMigrations] = useState<InvoiceMigration[]>([]);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [scrapingForm, setScrapingForm] = useState<ScrapingForm>({
+    token: '',
+    startDate: '',
+    endDate: ''
+  });
+  const [datePickerState, setDatePickerState] = useState<DatePickerState>({
+    startDate: undefined,
+    endDate: undefined
+  });
+  const [scrapingResult, setScrapingResult] = useState<ScrapingResult | null>(null);
+  const [isScraping, setIsScraping] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    documentNumber: '',
+    senderName: '',
+    senderNit: ''
+  });
+  const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  const [showScrapingModal, setShowScrapingModal] = useState(false);
+
+  const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pagination.limit.toString()
+      });
+      
+      if (searchFilters.documentNumber) {
+        params.append('documentNumber', searchFilters.documentNumber);
+      }
+      if (searchFilters.senderName) {
+        params.append('senderName', searchFilters.senderName);
+      }
+      if (searchFilters.senderNit) {
+        params.append('senderNit', searchFilters.senderNit);
+      }
+      
+      const response = await fetch(`/api/scraped-documents?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setMigrations(result.data.documents);
+        setPagination(result.data.pagination);
+        
+        // Detectar si hay filtros activos
+        const hasFilters = !!(searchFilters.documentNumber || searchFilters.senderName || searchFilters.senderNit);
+        setHasActiveFilters(hasFilters);
+      } else {
+        console.error('Error loading documents:', result.message);
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadDocuments(newPage);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (pagination.page > 1) {
+      handlePageChange(pagination.page - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.page < pagination.totalPages) {
+      handlePageChange(pagination.page + 1);
+    }
+  };
+
+  const handleFilterChange = (field: keyof typeof filters, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSearch = () => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+    loadDocuments(1, filters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      documentNumber: '',
+      senderName: '',
+      senderNit: ''
+    });
+    setHasActiveFilters(false);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    loadDocuments(1, {
+      documentNumber: '',
+      senderName: '',
+      senderNit: ''
+    });
+  };
+
+  const handleMigrateInvoices = async () => {
+    setIsMigrating(true);
+    
+    setTimeout(() => {
+      setIsMigrating(false);
+      loadDocuments();
+    }, 2000);
+  };
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    setDatePickerState(prev => ({ ...prev, startDate: date }));
+    if (date) {
+      setScrapingForm(prev => ({
+        ...prev,
+        startDate: date.toISOString().split('T')[0]
+      }));
+    }
+  };
+
+  const handleEndDateChange = (date: Date | undefined) => {
+    setDatePickerState(prev => ({ ...prev, endDate: date }));
+    if (date) {
+      setScrapingForm(prev => ({
+        ...prev,
+        endDate: date.toISOString().split('T')[0]
+      }));
+    }
+  };
+
+  const handleScraping = async () => {
+    if (!scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate) {
+      setScrapingResult({
+        success: false,
+        message: 'Por favor, completa todos los campos requeridos'
+      });
+      return;
+    }
+
+    setIsScraping(true);
+    setScrapingResult(null);
+
+    try {
+      console.log('Sending scraping request:', {
+        token: scrapingForm.token ? `${scrapingForm.token.substring(0, 10)}...` : 'missing',
+        startDate: scrapingForm.startDate,
+        endDate: scrapingForm.endDate
+      });
+
+      const response = await fetch('/api/scraping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(scrapingForm)
+      });
+
+      console.log('Response status:', response.status);
+      const result = await response.json();
+      console.log('Response result:', result);
+
+      if (result.success) {
+        setScrapingResult({
+          success: true,
+          message: result.message,
+          migratedFiles: result.data.downloadedFiles
+        });
+        
+        // Convert scraping results to invoice migrations format
+        const convertedMigrations: InvoiceMigration[] = result.data.downloadedFiles.map((file: MigratedFile, index: number) => ({
+          id: (index + 1).toString(),
+          documentNumber: file.filename.replace('.pdf', '').replace('.xml', ''),
+          date: new Date(file.migrationDate).toISOString().split('T')[0],
+          totalValue: 'N/A', // Amount not available from scraping
+          status: 'migrated' as const,
+          senderName: 'DIAN',
+          senderNit: 'N/A',
+          type: 'Documento'
+        }));
+        
+        setMigrations(convertedMigrations);
+        loadDocuments();
+        setShowScrapingModal(false); // Cerrar modal después del éxito
+      } else {
+        const errorMessage = result.message || result.error || 'Error desconocido';
+        setScrapingResult({
+          success: false,
+          message: errorMessage,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      setScrapingResult({
+        success: false,
+        message: 'Error de conexión durante el scraping',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  const handleOpenScrapingModal = () => {
+    setShowScrapingModal(true);
+    setScrapingResult(null);
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'migrated':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'failed':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      case 'pending':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'migrated':
+        return 'Migrado';
+      case 'failed':
+        return 'Error';
+      case 'pending':
+        return 'Pendiente';
+      default:
+        return 'Desconocido';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'migrated':
+        return 'bg-green-100 text-green-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    
+    let date: Date;
+    
+    if (dateString.includes('-') && dateString.split('-')[0].length <= 2) {
+      const [day, month, year] = dateString.split('-');
+      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      date = new Date(isoDate);
+    } else {
+      date = new Date(dateString);
+    }
+
+    // Formato dd/mm/aa
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleMigrate = (invoice: InvoiceMigration) => {
+    console.log('Migrating invoice:', invoice);
+    // Aquí implementarías la lógica de migración
+  };
+
+  const handlePreview = (invoice: InvoiceMigration) => {
+    console.log('Previewing invoice:', invoice);
+    // Aquí implementarías la lógica de previsualización
+  };
+
+  return (
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <ArrowRightLeft className="h-8 w-8 text-blue-500" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Migrar Facturas
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Migra y previsualiza tus facturas desde SIIGO
+            </p>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Migración de Facturas</CardTitle>
+                    <CardDescription>
+                      Migra facturas del sistema SIIGO automáticamente
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleMigrateInvoices}
+                      disabled={isMigrating}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isMigrating ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Migrando...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                          Migrar Facturas
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={handleOpenScrapingModal}
+                      disabled={isScraping}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Migrar información DIAN
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Cargando documentos...
+                    </h3>
+                    <p className="text-gray-600">
+                      Obteniendo documentos de la base de datos
+                    </p>
+                  </div>
+                ) : migrations.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {hasActiveFilters ? 'No encontramos documentos con los valores seleccionados' : 'No hay documentos disponibles'}
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {hasActiveFilters ? 'Intenta con otros filtros o limpia la búsqueda' : 'Ejecuta el scraping para obtener documentos de la DIAN'}
+                    </p>
+                    {hasActiveFilters && (
+                      <Button onClick={handleClearFilters} className="bg-blue-600 hover:bg-blue-700">
+                        Limpiar Filtros
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">Documentos Disponibles ({migrations.length})</h3>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowFilters(!showFilters)}
+                        >
+                          <Filter className="h-4 w-4 mr-2" />
+                          {showFilters ? 'Ocultar Filtros' : 'Filtrar'}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => loadDocuments()}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Actualizar
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {showFilters && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="filter-document-number" className="text-sm font-medium">
+                              Nº Documento
+                            </Label>
+                            <Input
+                              id="filter-document-number"
+                              value={filters.documentNumber}
+                              onChange={(e) => handleFilterChange('documentNumber', e.target.value)}
+                              placeholder="Buscar por número de documento"
+                              className="mt-1"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="filter-sender-name" className="text-sm font-medium">
+                              Proveedor
+                            </Label>
+                            <Input
+                              id="filter-sender-name"
+                              value={filters.senderName}
+                              onChange={(e) => handleFilterChange('senderName', e.target.value)}
+                              placeholder="Buscar por nombre del proveedor"
+                              className="mt-1"
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="filter-sender-nit" className="text-sm font-medium">
+                              NIT
+                            </Label>
+                            <Input
+                              id="filter-sender-nit"
+                              value={filters.senderNit}
+                              onChange={(e) => handleFilterChange('senderNit', e.target.value)}
+                              placeholder="Buscar por NIT"
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-4">
+                          <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700">
+                            <Search className="h-4 w-4 mr-2" />
+                            Buscar
+                          </Button>
+                          <Button variant="outline" onClick={handleClearFilters}>
+                            Limpiar Filtros
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Fecha</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">NIT</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Proveedor</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Nº Documento</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Valor Total</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Estado</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Ruta de Migración</th>
+                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {migrations.map((invoice) => (
+                            <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-2 px-3 text-sm text-gray-600 font-medium">
+                                {formatDate(invoice.date)}
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-600">
+                                {invoice.senderNit}
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-700">
+                                {invoice.senderName}
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-900 font-medium">
+                                {invoice.documentNumber}
+                              </td>
+                              <td className="py-2 px-3 text-sm font-medium text-gray-900">
+                                {invoice.totalValue}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                                  {getStatusIcon(invoice.status)}
+                                  {getStatusText(invoice.status)}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-sm text-gray-600">
+                                {invoice.migrationPath ? (
+                                  <div className="max-w-xs truncate" title={invoice.migrationPath}>
+                                    {invoice.migrationPath}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">No migrado</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => handleMigrate(invoice)}
+                                    title="Migrar factura"
+                                  >
+                                    <ArrowRightLeft className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    onClick={() => handlePreview(invoice)}
+                                    title="Previsualizar factura"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {pagination.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center text-sm text-gray-700">
+                          <span>
+                            Mostrando {((pagination.page - 1) * pagination.limit) + 1} a {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} documentos
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePreviousPage}
+                            disabled={pagination.page <= 1}
+                            className="flex items-center gap-1"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Anterior
+                          </Button>
+                          
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                              const pageNum = i + 1;
+                              const isActive = pageNum === pagination.page;
+                              
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={isActive ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handlePageChange(pageNum)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                            
+                            {pagination.totalPages > 5 && (
+                              <>
+                                <span className="text-gray-500">...</span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePageChange(pagination.totalPages)}
+                                  className="w-8 h-8 p-0"
+                                >
+                                  {pagination.totalPages}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleNextPage}
+                            disabled={pagination.page >= pagination.totalPages}
+                            className="flex items-center gap-1"
+                          >
+                            Siguiente
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+        </div>
+
+        {/* Modal de Configuración de Scraping */}
+        {showScrapingModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+            <div className="bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Migrar información DIAN
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowScrapingModal(false)}
+                  className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              <div className="space-y-8">
+                <p className="text-lg text-gray-600">
+                  Configura los parámetros para migrar documentos desde la DIAN automáticamente
+                </p>
+                
+                {/* Three column layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Column 1: Date Range */}
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="startDate" className="text-base font-medium">Fecha de Inicio</Label>
+                      <DatePicker
+                        date={datePickerState.startDate}
+                        onDateChange={handleStartDateChange}
+                        placeholder="Selecciona fecha de inicio"
+                        disabled={isScraping}
+                      />
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Label htmlFor="endDate" className="text-base font-medium">Fecha de Fin</Label>
+                      <DatePicker
+                        date={datePickerState.endDate}
+                        onDateChange={handleEndDateChange}
+                        placeholder="Selecciona fecha de fin"
+                        disabled={isScraping}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Column 2: URL */}
+                  <div className="space-y-3">
+                    <Label htmlFor="token" className="text-base font-medium">URL de Autenticación DIAN</Label>
+                    <Input
+                      id="token"
+                      type="text"
+                      value={scrapingForm.token}
+                      onChange={(e) => setScrapingForm(prev => ({
+                        ...prev,
+                        token: e.target.value
+                      }))}
+                      placeholder="https://catalogo-vpfe.dian.gov.co/User/AuthToken?pk=10910094%7C70322015&rk=900698993&token=82dadb26-4c96-4da7-9967-ec4a219c40c5"
+                      disabled={isScraping}
+                      className="h-12 text-sm"
+                    />
+                    <p className="text-sm text-gray-500">
+                      Ingresa la URL completa de autenticación de la DIAN
+                    </p>
+                  </div>
+                  
+                  {/* Column 3: Action Button */}
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={handleScraping}
+                      disabled={isScraping || !scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate}
+                      className="w-full h-14 bg-green-600 hover:bg-green-700 text-base font-medium"
+                    >
+                      {isScraping ? (
+                        <>
+                          <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
+                          Ejecutando Migración...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRightLeft className="h-5 w-5 mr-3" />
+                          Ejecutar Migración
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Scraping Result */}
+                {scrapingResult && (
+                  <div className="mt-6 p-6 rounded-lg border-2">
+                    <div className={`flex items-center gap-3 mb-4 ${
+                      scrapingResult.success ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {scrapingResult.success ? (
+                        <CheckCircle className="h-6 w-6" />
+                      ) : (
+                        <AlertCircle className="h-6 w-6" />
+                      )}
+                      <span className="font-semibold text-base">
+                        {scrapingResult.message}
+                      </span>
+                    </div>
+                    
+                    {scrapingResult.migratedFiles && scrapingResult.migratedFiles.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-base font-semibold text-gray-700 mb-3">
+                          Archivos migrados ({scrapingResult.migratedFiles.length}):
+                        </h4>
+                        <div className="space-y-2">
+                          {scrapingResult.migratedFiles.map((file, index) => (
+                            <div key={index} className="text-sm text-gray-600 flex items-center gap-3 p-2 bg-gray-50 rounded">
+                              <FileText className="h-4 w-4" />
+                              {file.filename} ({(file.size / 1024).toFixed(1)} KB)
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </MainLayout>
+  )
+}
+
