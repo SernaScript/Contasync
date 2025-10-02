@@ -240,12 +240,6 @@ export default function InvoiceDownloadsPage() {
     setScrapingResult(null);
 
     try {
-      console.log('Sending scraping request:', {
-        token: scrapingForm.token ? `${scrapingForm.token.substring(0, 10)}...` : 'missing',
-        startDate: scrapingForm.startDate,
-        endDate: scrapingForm.endDate
-      });
-
       const response = await fetch('/api/scraping', {
         method: 'POST',
         headers: {
@@ -254,9 +248,7 @@ export default function InvoiceDownloadsPage() {
         body: JSON.stringify(scrapingForm)
       });
 
-      console.log('Response status:', response.status);
       const result = await response.json();
-      console.log('Response result:', result);
 
       if (result.success) {
         setScrapingResult({
@@ -321,8 +313,6 @@ export default function InvoiceDownloadsPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      console.log(`Downloading file: ${filePath}`);
     } catch (error) {
       console.error('Error downloading file:', error);
       
@@ -355,7 +345,6 @@ export default function InvoiceDownloadsPage() {
       const supplierParty = xmlDoc.querySelector('cac\\:AccountingSupplierParty, AccountingSupplierParty');
       
       if (!supplierParty) {
-        console.log('No se encontró la sección AccountingSupplierParty');
         return {
           name: 'No encontrado',
           nit: 'No encontrado',
@@ -368,7 +357,6 @@ export default function InvoiceDownloadsPage() {
       const partyTaxScheme = supplierParty.querySelector('cac\\:Party cac\\:PartyTaxScheme, Party PartyTaxScheme');
       
       if (!partyTaxScheme) {
-        console.log('No se encontró la sección PartyTaxScheme');
         return {
           name: 'No encontrado',
           nit: 'No encontrado',
@@ -384,7 +372,6 @@ export default function InvoiceDownloadsPage() {
       
       // Si no se encuentra, buscar en PartyName como fallback
       if (!supplierName) {
-        console.log('Nombre no encontrado en PartyTaxScheme, buscando en PartyName como fallback');
         supplierNameElement = supplierParty.querySelector('cac\\:Party cac\\:PartyName cbc\\:Name, Party PartyName Name');
         supplierName = supplierNameElement?.textContent?.trim();
       }
@@ -398,7 +385,6 @@ export default function InvoiceDownloadsPage() {
       
       // Si no se encuentra, buscar en PartyIdentification como fallback
       if (!supplierNit) {
-        console.log('NIT no encontrado en PartyTaxScheme, buscando en PartyIdentification como fallback');
         supplierNitElement = supplierParty.querySelector('cac\\:Party cac\\:PartyIdentification cbc\\:ID, Party PartyIdentification ID');
         supplierNit = supplierNitElement?.textContent?.trim();
       }
@@ -412,13 +398,6 @@ export default function InvoiceDownloadsPage() {
       // Extraer ciudad desde RegistrationAddress en PartyTaxScheme
       const cityElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cbc\\:CityName, RegistrationAddress CityName');
       const city = cityElement?.textContent?.trim() || 'No encontrado';
-      
-      console.log('Extracted supplier info:', {
-        name: supplierName,
-        nit: supplierNit,
-        address: address,
-        city: city
-      });
       
       return {
         name: supplierName,
@@ -446,7 +425,6 @@ export default function InvoiceDownloadsPage() {
       const invoiceLineElements = xmlDoc.querySelectorAll('cac\\:InvoiceLine, InvoiceLine');
       
       if (!invoiceLineElements || invoiceLineElements.length === 0) {
-        console.log('No se encontraron líneas de factura');
         return [];
       }
       
@@ -480,7 +458,6 @@ export default function InvoiceDownloadsPage() {
         };
       });
       
-      console.log('Extracted invoice lines:', lines);
       return lines;
     } catch (error) {
       console.error('Error extracting invoice lines:', error);
@@ -497,7 +474,6 @@ export default function InvoiceDownloadsPage() {
       const legalMonetaryTotal = xmlDoc.querySelector('cac\\:LegalMonetaryTotal, LegalMonetaryTotal');
       
       if (!legalMonetaryTotal) {
-        console.log('No se encontró la sección LegalMonetaryTotal');
         return '0';
       }
       
@@ -505,7 +481,6 @@ export default function InvoiceDownloadsPage() {
       const payableAmountElement = legalMonetaryTotal.querySelector('cbc\\:PayableAmount, PayableAmount');
       const payableAmount = payableAmountElement?.textContent?.trim() || '0';
       
-      console.log('Extracted invoice total:', payableAmount);
       return payableAmount;
     } catch (error) {
       console.error('Error extracting invoice total:', error);
@@ -535,12 +510,8 @@ export default function InvoiceDownloadsPage() {
         xmlPath = xmlPath.replace('.pdf', '.xml');
       }
       
-      console.log('PDF Path:', pdfPath);
-      console.log('Converted XML Path:', xmlPath);
-      
       // Crear URL para obtener el contenido del XML
       const xmlUrl = `/api/download-file?path=${encodeURIComponent(xmlPath)}`;
-      console.log('XML URL:', xmlUrl);
       
       // Obtener el contenido del XML
       let response = await fetch(xmlUrl);
@@ -553,13 +524,11 @@ export default function InvoiceDownloadsPage() {
         const fileName = pdfPath.split('/').pop() || pdfPath.split('\\').pop();
         if (fileName) {
           const alternativeXmlPath = `downloads/scraping-results/XML/${fileName.replace('.pdf', '.xml')}`;
-          console.log('Trying alternative XML path:', alternativeXmlPath);
           
           const alternativeUrl = `/api/download-file?path=${encodeURIComponent(alternativeXmlPath)}`;
           response = await fetch(alternativeUrl);
           
           if (response.ok) {
-            console.log('Alternative path worked!');
             // Actualizar xmlPath para el resto de la función
             xmlPath = alternativeXmlPath;
           }
@@ -588,11 +557,6 @@ export default function InvoiceDownloadsPage() {
       setInvoiceLines(invoiceLinesData);
       setInvoiceTotal(invoiceTotalData);
       openXMLModal();
-      
-      console.log(`Successfully loaded XML: ${xmlPath}`);
-      console.log('Extracted supplier info:', supplierData);
-      console.log('Extracted invoice lines:', invoiceLinesData);
-      console.log('Extracted invoice total:', invoiceTotalData);
     } catch (error) {
       console.error('Error loading XML:', error);
       // Aquí podrías agregar una notificación de error al usuario
