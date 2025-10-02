@@ -92,6 +92,14 @@ export default function InvoiceDownloadsPage() {
   });
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
   const [showScrapingModal, setShowScrapingModal] = useState(false);
+  const [showXMLModal, setShowXMLModal] = useState(false);
+  const [xmlContent, setXmlContent] = useState<string>('');
+  const [xmlFileName, setXmlFileName] = useState<string>('');
+  const [supplierInfo, setSupplierInfo] = useState<{
+    name: string;
+    nit: string;
+    address: string;
+  } | null>(null);
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -308,6 +316,132 @@ export default function InvoiceDownloadsPage() {
     } catch (error) {
       console.error('Error downloading file:', error);
       
+    }
+  };
+
+  const extractSupplierInfo = (xmlText: string) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      // Buscar la sección del proveedor (AccountingSupplierParty)
+      const supplierParty = xmlDoc.querySelector('cac\\:AccountingSupplierParty, AccountingSupplierParty');
+      
+      if (!supplierParty) {
+        console.log('No se encontró la sección AccountingSupplierParty');
+        return {
+          name: 'No encontrado',
+          nit: 'No encontrado',
+          address: 'No encontrado'
+        };
+      }
+      
+      // Extraer nombre del proveedor
+      const supplierNameElement = supplierParty.querySelector('cac\\:Party cac\\:PartyName cbc\\:Name, Party PartyName Name');
+      const supplierName = supplierNameElement?.textContent?.trim() || 'No encontrado';
+      
+      // Extraer NIT del proveedor (primera ocurrencia en PartyTaxScheme)
+      const supplierNitElement = supplierParty.querySelector('cac\\:Party cac\\:PartyTaxScheme cbc\\:CompanyID, Party PartyTaxScheme CompanyID');
+      const supplierNit = supplierNitElement?.textContent?.trim() || 'No encontrado';
+      
+      // Extraer dirección del proveedor (primera ocurrencia en PhysicalLocation)
+      const addressElement = supplierParty.querySelector('cac\\:Party cac\\:PhysicalLocation cac\\:Address cac\\:AddressLine cbc\\:Line, Party PhysicalLocation Address AddressLine Line');
+      const address = addressElement?.textContent?.trim() || 'No encontrado';
+      
+      console.log('Extracted supplier info:', {
+        name: supplierName,
+        nit: supplierNit,
+        address: address
+      });
+      
+      return {
+        name: supplierName,
+        nit: supplierNit,
+        address: address
+      };
+    } catch (error) {
+      console.error('Error extracting supplier info:', error);
+      return {
+        name: 'Error al extraer',
+        nit: 'Error al extraer',
+        address: 'Error al extraer'
+      };
+    }
+  };
+
+  const handleViewXML = async (pdfPath: string | undefined) => {
+    if (!pdfPath) {
+      console.error('No PDF path provided');
+      return;
+    }
+
+    try {
+      // Convertir ruta PDF a ruta XML
+      // Manejar diferentes formatos de rutas
+      let xmlPath = pdfPath;
+      
+      // Reemplazar /PDF/ por /XML/ y cambiar .pdf por .xml
+      if (xmlPath.includes('/PDF/')) {
+        xmlPath = xmlPath.replace('/PDF/', '/XML/');
+      } else if (xmlPath.includes('\\PDF\\')) {
+        xmlPath = xmlPath.replace('\\PDF\\', '\\XML\\');
+      }
+      
+      if (xmlPath.endsWith('.pdf')) {
+        xmlPath = xmlPath.replace('.pdf', '.xml');
+      }
+      
+      console.log('PDF Path:', pdfPath);
+      console.log('Converted XML Path:', xmlPath);
+      
+      // Crear URL para obtener el contenido del XML
+      const xmlUrl = `/api/download-file?path=${encodeURIComponent(xmlPath)}`;
+      console.log('XML URL:', xmlUrl);
+      
+      // Obtener el contenido del XML
+      let response = await fetch(xmlUrl);
+      
+      if (!response.ok) {
+        console.error('First attempt failed - Response status:', response.status);
+        console.error('Response statusText:', response.statusText);
+        
+        // Intentar con una ruta alternativa basada en el nombre del archivo
+        const fileName = pdfPath.split('/').pop() || pdfPath.split('\\').pop();
+        if (fileName) {
+          const alternativeXmlPath = `downloads/scraping-results/XML/${fileName.replace('.pdf', '.xml')}`;
+          console.log('Trying alternative XML path:', alternativeXmlPath);
+          
+          const alternativeUrl = `/api/download-file?path=${encodeURIComponent(alternativeXmlPath)}`;
+          response = await fetch(alternativeUrl);
+          
+          if (response.ok) {
+            console.log('Alternative path worked!');
+            // Actualizar xmlPath para el resto de la función
+            xmlPath = alternativeXmlPath;
+          }
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Error loading XML: ${response.statusText}`);
+        }
+      }
+      
+      const xmlText = await response.text();
+      
+      // Extraer información del proveedor
+      const supplierData = extractSupplierInfo(xmlText);
+      
+      // Configurar el estado del modal
+      setXmlContent(xmlText);
+      setXmlFileName(xmlPath.split('/').pop() || 'documento.xml');
+      setSupplierInfo(supplierData);
+      setShowXMLModal(true);
+      
+      console.log(`Successfully loaded XML: ${xmlPath}`);
+      console.log('Extracted supplier info:', supplierData);
+    } catch (error) {
+      console.error('Error loading XML:', error);
+      // Aquí podrías agregar una notificación de error al usuario
     }
   };
 
@@ -578,16 +712,28 @@ export default function InvoiceDownloadsPage() {
                                 {getStatusIcon(invoice.status)}
                               </td>
                               <td className="py-2 px-3">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-7 w-7 p-0"
-                                  disabled={!invoice.downloadPath}
-                                  title={invoice.downloadPath ? "Descargar archivo" : "Archivo no disponible"}
-                                  onClick={() => handleDownloadFile(invoice.downloadPath)}
-                                >
-                                  <Download className="h-3 w-3" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    disabled={!invoice.downloadPath}
+                                    title={invoice.downloadPath ? "Descargar PDF" : "Archivo no disponible"}
+                                    onClick={() => handleDownloadFile(invoice.downloadPath)}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    disabled={!invoice.downloadPath}
+                                    title={invoice.downloadPath ? "Ver XML" : "Archivo no disponible"}
+                                    onClick={() => handleViewXML(invoice.downloadPath)}
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -790,6 +936,111 @@ export default function InvoiceDownloadsPage() {
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Visualización de XML */}
+        {showXMLModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+            <div className="bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Visualizador de XML
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowXMLModal(false)}
+                  className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
+                >
+                  ×
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <FileText className="h-4 w-4" />
+                  <span>Archivo: {xmlFileName}</span>
+                </div>
+                
+                {/* Información del Proveedor */}
+                {supplierInfo && (
+                  <div className="border rounded-lg overflow-hidden bg-blue-50">
+                    <div className="bg-blue-100 px-4 py-2 border-b">
+                      <h3 className="text-sm font-medium text-blue-800">Información del Proveedor</h3>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700 w-20">Nombre:</span>
+                        <span className="text-sm text-gray-900 font-semibold">{supplierInfo.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700 w-20">NIT:</span>
+                        <span className="text-sm text-gray-900">{supplierInfo.nit}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-medium text-gray-700 w-20">Dirección:</span>
+                        <span className="text-sm text-gray-900">{supplierInfo.address}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 border-b">
+                    <h3 className="text-sm font-medium text-gray-700">Contenido XML</h3>
+                  </div>
+                  <div className="p-4 bg-gray-900 text-green-400 font-mono text-xs overflow-auto max-h-[50vh]">
+                    <pre className="whitespace-pre-wrap break-words">
+                      {xmlContent}
+                    </pre>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Función para formatear el XML
+                      try {
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+                        const serializer = new XMLSerializer();
+                        const formattedXML = serializer.serializeToString(xmlDoc);
+                        setXmlContent(formattedXML);
+                      } catch (error) {
+                        console.error('Error formatting XML:', error);
+                      }
+                    }}
+                  >
+                    Formatear XML
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Descargar el XML
+                      const blob = new Blob([xmlContent], { type: 'application/xml' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = xmlFileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descargar XML
+                  </Button>
+                  <Button
+                    onClick={() => setShowXMLModal(false)}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

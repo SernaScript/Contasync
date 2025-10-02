@@ -15,11 +15,16 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-   
+    // Validar que la ruta esté dentro del directorio de descargas permitido
     const downloadsDir = path.resolve('./downloads');
     const fullPath = path.resolve(filePath);
     
+    console.log('Requested filePath:', filePath);
+    console.log('Downloads directory:', downloadsDir);
+    console.log('Resolved fullPath:', fullPath);
+    
     if (!fullPath.startsWith(downloadsDir)) {
+      console.log('Path validation failed - not in downloads directory');
       return NextResponse.json({
         success: false,
         message: 'Ruta de archivo no permitida',
@@ -29,6 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Verificar que el archivo existe
     if (!fs.existsSync(fullPath)) {
+      console.log('File does not exist at path:', fullPath);
       return NextResponse.json({
         success: false,
         message: 'Archivo no encontrado',
