@@ -99,7 +99,15 @@ export default function InvoiceDownloadsPage() {
     name: string;
     nit: string;
     address: string;
+    city: string;
   } | null>(null);
+  const [invoiceLines, setInvoiceLines] = useState<{
+    id: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    totalAmount: string;
+  }[]>([]);
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -332,40 +340,132 @@ export default function InvoiceDownloadsPage() {
         return {
           name: 'No encontrado',
           nit: 'No encontrado',
-          address: 'No encontrado'
+          address: 'No encontrado',
+          city: 'No encontrado'
         };
       }
       
-      // Extraer nombre del proveedor
-      const supplierNameElement = supplierParty.querySelector('cac\\:Party cac\\:PartyName cbc\\:Name, Party PartyName Name');
-      const supplierName = supplierNameElement?.textContent?.trim() || 'No encontrado';
+      // Buscar la sección PartyTaxScheme del proveedor
+      const partyTaxScheme = supplierParty.querySelector('cac\\:Party cac\\:PartyTaxScheme, Party PartyTaxScheme');
       
-      // Extraer NIT del proveedor (primera ocurrencia en PartyTaxScheme)
-      const supplierNitElement = supplierParty.querySelector('cac\\:Party cac\\:PartyTaxScheme cbc\\:CompanyID, Party PartyTaxScheme CompanyID');
-      const supplierNit = supplierNitElement?.textContent?.trim() || 'No encontrado';
+      if (!partyTaxScheme) {
+        console.log('No se encontró la sección PartyTaxScheme');
+        return {
+          name: 'No encontrado',
+          nit: 'No encontrado',
+          address: 'No encontrado',
+          city: 'No encontrado'
+        };
+      }
       
-      // Extraer dirección del proveedor (primera ocurrencia en PhysicalLocation)
-      const addressElement = supplierParty.querySelector('cac\\:Party cac\\:PhysicalLocation cac\\:Address cac\\:AddressLine cbc\\:Line, Party PhysicalLocation Address AddressLine Line');
+      // Extraer nombre del proveedor con lógica de fallback
+      // Primero intentar desde RegistrationName en PartyTaxScheme
+      let supplierNameElement = partyTaxScheme.querySelector('cbc\\:RegistrationName, RegistrationName');
+      let supplierName = supplierNameElement?.textContent?.trim();
+      
+      // Si no se encuentra, buscar en PartyName como fallback
+      if (!supplierName) {
+        console.log('Nombre no encontrado en PartyTaxScheme, buscando en PartyName como fallback');
+        supplierNameElement = supplierParty.querySelector('cac\\:Party cac\\:PartyName cbc\\:Name, Party PartyName Name');
+        supplierName = supplierNameElement?.textContent?.trim();
+      }
+      
+      supplierName = supplierName || 'No encontrado';
+      
+      // Extraer NIT del proveedor con lógica de fallback
+      // Primero intentar desde CompanyID en PartyTaxScheme
+      let supplierNitElement = partyTaxScheme.querySelector('cbc\\:CompanyID, CompanyID');
+      let supplierNit = supplierNitElement?.textContent?.trim();
+      
+      // Si no se encuentra, buscar en PartyIdentification como fallback
+      if (!supplierNit) {
+        console.log('NIT no encontrado en PartyTaxScheme, buscando en PartyIdentification como fallback');
+        supplierNitElement = supplierParty.querySelector('cac\\:Party cac\\:PartyIdentification cbc\\:ID, Party PartyIdentification ID');
+        supplierNit = supplierNitElement?.textContent?.trim();
+      }
+      
+      supplierNit = supplierNit || 'No encontrado';
+      
+      // Extraer dirección desde RegistrationAddress en PartyTaxScheme
+      const addressElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cac\\:AddressLine cbc\\:Line, RegistrationAddress AddressLine Line');
       const address = addressElement?.textContent?.trim() || 'No encontrado';
+      
+      // Extraer ciudad desde RegistrationAddress en PartyTaxScheme
+      const cityElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cbc\\:CityName, RegistrationAddress CityName');
+      const city = cityElement?.textContent?.trim() || 'No encontrado';
       
       console.log('Extracted supplier info:', {
         name: supplierName,
         nit: supplierNit,
-        address: address
+        address: address,
+        city: city
       });
       
       return {
         name: supplierName,
         nit: supplierNit,
-        address: address
+        address: address,
+        city: city
       };
     } catch (error) {
       console.error('Error extracting supplier info:', error);
       return {
         name: 'Error al extraer',
         nit: 'Error al extraer',
-        address: 'Error al extraer'
+        address: 'Error al extraer',
+        city: 'Error al extraer'
       };
+    }
+  };
+
+  const extractInvoiceLines = (xmlText: string) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      // Buscar todas las líneas de factura (InvoiceLine)
+      const invoiceLineElements = xmlDoc.querySelectorAll('cac\\:InvoiceLine, InvoiceLine');
+      
+      if (!invoiceLineElements || invoiceLineElements.length === 0) {
+        console.log('No se encontraron líneas de factura');
+        return [];
+      }
+      
+      const lines = Array.from(invoiceLineElements).map((line, index) => {
+        // Extraer ID de la línea
+        const idElement = line.querySelector('cbc\\:ID, ID');
+        const id = idElement?.textContent?.trim() || `${index + 1}`;
+        
+        // Extraer descripción del item
+        const descriptionElement = line.querySelector('cac\\:Item cbc\\:Description, Item Description');
+        const description = descriptionElement?.textContent?.trim() || 'No disponible';
+        
+        // Extraer cantidad
+        const quantityElement = line.querySelector('cbc\\:InvoicedQuantity, InvoicedQuantity');
+        const quantity = quantityElement?.textContent?.trim() || '0';
+        
+        // Extraer precio unitario
+        const priceElement = line.querySelector('cac\\:Price cbc\\:PriceAmount, Price PriceAmount');
+        const unitPrice = priceElement?.textContent?.trim() || '0';
+        
+        // Extraer monto total de la línea
+        const totalElement = line.querySelector('cbc\\:LineExtensionAmount, LineExtensionAmount');
+        const totalAmount = totalElement?.textContent?.trim() || '0';
+        
+        return {
+          id,
+          description,
+          quantity,
+          unitPrice,
+          totalAmount
+        };
+      });
+      
+      console.log('Extracted invoice lines:', lines);
+      return lines;
+    } catch (error) {
+      console.error('Error extracting invoice lines:', error);
+      return [];
     }
   };
 
@@ -431,14 +531,19 @@ export default function InvoiceDownloadsPage() {
       // Extraer información del proveedor
       const supplierData = extractSupplierInfo(xmlText);
       
+      // Extraer líneas de factura
+      const invoiceLinesData = extractInvoiceLines(xmlText);
+      
       // Configurar el estado del modal
       setXmlContent(xmlText);
       setXmlFileName(xmlPath.split('/').pop() || 'documento.xml');
       setSupplierInfo(supplierData);
+      setInvoiceLines(invoiceLinesData);
       setShowXMLModal(true);
       
       console.log(`Successfully loaded XML: ${xmlPath}`);
       console.log('Extracted supplier info:', supplierData);
+      console.log('Extracted invoice lines:', invoiceLinesData);
     } catch (error) {
       console.error('Error loading XML:', error);
       // Aquí podrías agregar una notificación de error al usuario
@@ -952,7 +1057,10 @@ export default function InvoiceDownloadsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowXMLModal(false)}
+                  onClick={() => {
+                    setShowXMLModal(false);
+                    setInvoiceLines([]);
+                  }}
                   className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
                 >
                   ×
@@ -984,6 +1092,85 @@ export default function InvoiceDownloadsPage() {
                         <span className="text-sm font-medium text-gray-700 w-20">Dirección:</span>
                         <span className="text-sm text-gray-900">{supplierInfo.address}</span>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700 w-20">Ciudad:</span>
+                        <span className="text-sm text-gray-900">{supplierInfo.city}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Líneas de Factura */}
+                {invoiceLines && invoiceLines.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden bg-green-50">
+                    <div className="bg-green-100 px-4 py-2 border-b">
+                      <h3 className="text-sm font-medium text-green-800">Líneas de Factura ({invoiceLines.length} items)</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full bg-white">
+                        <thead className="bg-green-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider border-b">
+                              #
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-green-800 uppercase tracking-wider border-b">
+                              Descripción
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-green-800 uppercase tracking-wider border-b">
+                              Cantidad
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-green-800 uppercase tracking-wider border-b">
+                              Precio Unit.
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-green-800 uppercase tracking-wider border-b">
+                              Total
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {invoiceLines.map((line, index) => (
+                            <tr key={line.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  {line.id}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="text-sm font-medium text-gray-900 max-w-md">
+                                  {line.description}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <span className="text-sm text-gray-900">
+                                  {parseFloat(line.quantity || '0').toLocaleString('es-CO')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <span className="text-sm text-gray-900">
+                                  ${parseFloat(line.unitPrice || '0').toLocaleString('es-CO')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <span className="text-sm font-semibold text-gray-900">
+                                  ${parseFloat(line.totalAmount || '0').toLocaleString('es-CO')}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-green-50">
+                          <tr>
+                            <td colSpan={4} className="px-4 py-3 text-right text-sm font-medium text-green-800">
+                              Total:
+                            </td>
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <span className="text-sm font-bold text-green-900">
+                                ${invoiceLines.reduce((sum, line) => sum + parseFloat(line.totalAmount || '0'), 0).toLocaleString('es-CO')}
+                              </span>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -1036,7 +1223,10 @@ export default function InvoiceDownloadsPage() {
                     Descargar XML
                   </Button>
                   <Button
-                    onClick={() => setShowXMLModal(false)}
+                    onClick={() => {
+                      setShowXMLModal(false);
+                      setInvoiceLines([]);
+                    }}
                   >
                     Cerrar
                   </Button>
