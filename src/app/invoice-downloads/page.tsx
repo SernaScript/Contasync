@@ -286,6 +286,31 @@ export default function InvoiceDownloadsPage() {
     setScrapingResult(null);
   };
 
+  const handleDownloadFile = async (filePath: string | undefined) => {
+    if (!filePath) {
+      console.error('No file path provided');
+      return;
+    }
+
+    try {
+      
+      const downloadUrl = `/api/download-file?path=${encodeURIComponent(filePath)}`;
+      
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filePath.split('/').pop() || 'documento.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`Downloading file: ${filePath}`);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'downloaded':
@@ -572,6 +597,7 @@ export default function InvoiceDownloadsPage() {
                                   className="h-7 w-7 p-0"
                                   disabled={!invoice.downloadPath}
                                   title={invoice.downloadPath ? "Descargar archivo" : "Archivo no disponible"}
+                                  onClick={() => handleDownloadFile(invoice.downloadPath)}
                                 >
                                   <Download className="h-3 w-3" />
                                 </Button>

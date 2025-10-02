@@ -395,9 +395,22 @@ export class ScrapingService {
 
   private async updateDocumentAsDownloaded(documentData: ScrapedDocumentData, downloadPath: string, extractedFiles?: string[]): Promise<void> {
     try {
+      // Determine the display path - prefer PDF over ZIP
+      let displayPath = downloadPath;
+      
+      if (extractedFiles && extractedFiles.length > 0) {
+        // Look for PDF files in extracted files
+        const pdfFiles = extractedFiles.filter(file => file.toLowerCase().endsWith('.pdf'));
+        if (pdfFiles.length > 0) {
+          // Use the first PDF file as the display path
+          displayPath = pdfFiles[0];
+          console.log(`Using PDF path for display: ${displayPath}`);
+        }
+      }
+
       const updateData: any = {
         isDownloaded: true,
-        downloadPath: downloadPath,
+        downloadPath: displayPath, // Store the PDF path instead of ZIP path
         downloadDate: new Date(),
         updatedAt: new Date()
       };
@@ -411,7 +424,8 @@ export class ScrapingService {
       console.log(`Updating document as downloaded:`, {
         documentUUID: documentData.documentUUID,
         documentNumber: documentData.documentNumber,
-        downloadPath: downloadPath
+        originalDownloadPath: downloadPath,
+        displayPath: displayPath
       });
 
       if (documentData.documentUUID) {
