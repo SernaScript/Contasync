@@ -553,7 +553,6 @@ export default function InvoiceDownloadsPage() {
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Nº Documento</th>
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Valor Total</th>
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Estado</th>
-                            <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Ruta de Descarga</th>
                             <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Acciones</th>
                           </tr>
                         </thead>
@@ -576,19 +575,7 @@ export default function InvoiceDownloadsPage() {
                                 {invoice.totalValue}
                               </td>
                               <td className="py-2 px-3">
-                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                                  {getStatusIcon(invoice.status)}
-                                  {getStatusText(invoice.status)}
-                                </div>
-                              </td>
-                              <td className="py-2 px-3 text-sm text-gray-600">
-                                {invoice.downloadPath ? (
-                                  <div className="max-w-xs truncate" title={invoice.downloadPath}>
-                                    {invoice.downloadPath}
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">No descargado</span>
-                                )}
+                                {getStatusIcon(invoice.status)}
                               </td>
                               <td className="py-2 px-3">
                                 <Button 
