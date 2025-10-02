@@ -182,6 +182,10 @@ export class ScrapingService {
             totalValue: await this.getCellText(row, this.config.selectors.totalValueColumn),
           };
 
+          // Save document to database immediately after mapping
+          await this.saveSingleDocumentToDatabase(documentData);
+          console.log(`Saved document to database immediately: ${documentData.documentNumber} - ${documentData.senderName} - UUID: ${documentData.documentUUID || 'N/A'}`);
+
           mappedDocuments.push(documentData);
           console.log(`Mapped document: ${documentData.documentNumber} - ${documentData.senderName} - UUID: ${documentData.documentUUID || 'N/A'}`);
         } catch (e) {
@@ -190,7 +194,7 @@ export class ScrapingService {
         }
       }
 
-      console.log(`Mapped ${mappedDocuments.length} documents from current page.`);
+      console.log(`Mapped and saved ${mappedDocuments.length} documents from current page.`);
       return mappedDocuments;
     } catch (e) {
       console.error(`Error mapping current page: ${e}`);
@@ -265,51 +269,61 @@ export class ScrapingService {
     return undefined;
   }
 
+  private async saveSingleDocumentToDatabase(doc: ScrapedDocumentData): Promise<void> {
+    try {
+      const documentUUID = doc.documentUUID || `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Use upsert to handle duplicates gracefully
+      await this.prisma.scrapedDocument.upsert({
+        where: {
+          documentUUID: documentUUID
+        },
+        update: {
+          // Update existing record with latest data
+          reception: doc.reception,
+          documentDate: doc.documentDate,
+          prefix: doc.prefix,
+          documentNumber: doc.documentNumber,
+          documentType: doc.documentType,
+          senderNit: doc.senderNit,
+          senderName: doc.senderName,
+          receiverNit: doc.receiverNit,
+          receiverName: doc.receiverName,
+          result: doc.result,
+          radianStatus: doc.radianStatus,
+          totalValue: doc.totalValue,
+          updatedAt: new Date()
+        },
+        create: {
+          documentUUID: documentUUID,
+          reception: doc.reception,
+          documentDate: doc.documentDate,
+          prefix: doc.prefix,
+          documentNumber: doc.documentNumber,
+          documentType: doc.documentType,
+          senderNit: doc.senderNit,
+          senderName: doc.senderName,
+          receiverNit: doc.receiverNit,
+          receiverName: doc.receiverName,
+          result: doc.result,
+          radianStatus: doc.radianStatus,
+          totalValue: doc.totalValue,
+          isDownloaded: false
+        }
+      });
+    } catch (error) {
+      console.error('Error saving single document to database:', error);
+      console.error('Document data:', doc);
+      throw error;
+    }
+  }
+
   private async saveDocumentsToDatabase(documents: ScrapedDocumentData[]): Promise<void> {
     try {
       console.log(`Saving ${documents.length} documents to database...`);
       
       for (const doc of documents) {
-        const documentUUID = doc.documentUUID || `unknown-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Use upsert to handle duplicates gracefully
-        await this.prisma.scrapedDocument.upsert({
-          where: {
-            documentUUID: documentUUID
-          },
-          update: {
-            // Update existing record with latest data
-            reception: doc.reception,
-            documentDate: doc.documentDate,
-            prefix: doc.prefix,
-            documentNumber: doc.documentNumber,
-            documentType: doc.documentType,
-            senderNit: doc.senderNit,
-            senderName: doc.senderName,
-            receiverNit: doc.receiverNit,
-            receiverName: doc.receiverName,
-            result: doc.result,
-            radianStatus: doc.radianStatus,
-            totalValue: doc.totalValue,
-            updatedAt: new Date()
-          },
-          create: {
-            documentUUID: documentUUID,
-            reception: doc.reception,
-            documentDate: doc.documentDate,
-            prefix: doc.prefix,
-            documentNumber: doc.documentNumber,
-            documentType: doc.documentType,
-            senderNit: doc.senderNit,
-            senderName: doc.senderName,
-            receiverNit: doc.receiverNit,
-            receiverName: doc.receiverName,
-            result: doc.result,
-            radianStatus: doc.radianStatus,
-            totalValue: doc.totalValue,
-            isDownloaded: false
-          }
-        });
+        await this.saveSingleDocumentToDatabase(doc);
       }
       
       console.log(`Successfully saved ${documents.length} documents to database.`);
@@ -336,6 +350,24 @@ export class ScrapingService {
     }
   }
 
+  private async isDocumentAlreadyDownloaded(documentUUID: string): Promise<boolean> {
+    try {
+      if (!documentUUID) return false;
+      
+      const existingDocument = await this.prisma.scrapedDocument.findUnique({
+        where: {
+          documentUUID: documentUUID
+        }
+      });
+      
+      // Only skip if document exists AND is already downloaded
+      return existingDocument !== null && existingDocument.isDownloaded === true;
+    } catch (error) {
+      console.error('Error checking if document is already downloaded:', error);
+      return false; // If error, don't skip (allow download)
+    }
+  }
+
   private async shouldSkipDocument(documentData: ScrapedDocumentData): Promise<boolean> {
     // Filter 1: Skip if sender name contains "F2X S.A.S." - DISABLED to allow F2X downloads
     // if (documentData.senderName?.includes('F2X S.A.S.')) {
@@ -349,11 +381,11 @@ export class ScrapingService {
       return true;
     }
 
-    // Filter 3: Skip if document already exists in database
+    // Filter 3: Skip if document is already downloaded (not just exists in database)
     if (documentData.documentUUID) {
-      const alreadyExists = await this.isDocumentAlreadyInDatabase(documentData.documentUUID);
-      if (alreadyExists) {
-        console.log(`Filtered out - Document already exists in database: ${documentData.documentUUID}`);
+      const isAlreadyDownloaded = await this.isDocumentAlreadyDownloaded(documentData.documentUUID);
+      if (isAlreadyDownloaded) {
+        console.log(`Filtered out - Document already downloaded: ${documentData.documentUUID}`);
         return true;
       }
     }
@@ -698,10 +730,11 @@ export class ScrapingService {
         try {
           console.log(`\n=== PROCESSING PAGE ${currentPage} ===`);
           
-          // Step 1: Map current page data
+          // Step 1: Map current page data (documents are saved to database immediately during mapping)
           console.log(`Step 1: Mapping page ${currentPage} data...`);
           const pageDocuments = await this.mapCurrentPageData();
-          console.log(`Mapped ${pageDocuments.length} documents from page ${currentPage}.`);
+          console.log(`Mapped and saved ${pageDocuments.length} documents from page ${currentPage}.`);
+          totalMappedDocuments += pageDocuments.length;
           
           // Step 2: Download files from current page (with filters)
           console.log(`Step 2: Downloading files from page ${currentPage} (with filters)...`);
@@ -709,14 +742,8 @@ export class ScrapingService {
           totalDownloadedFiles = totalDownloadedFiles.concat(pageDownloadedFiles);
           console.log(`Downloaded ${pageDownloadedFiles.length} files from page ${currentPage}. Total downloaded: ${totalDownloadedFiles.length}`);
           
-          // Step 3: Save page documents to database (after downloads)
-          console.log(`Step 3: Saving page ${currentPage} documents to database...`);
-          await this.saveDocumentsToDatabase(pageDocuments);
-          totalMappedDocuments += pageDocuments.length;
-          console.log(`Saved ${pageDocuments.length} documents to database. Total mapped: ${totalMappedDocuments}`);
-          
-          // Step 4: Check if there's a next page
-          console.log(`Step 4: Checking for next page...`);
+          // Step 3: Check if there's a next page
+          console.log(`Step 3: Checking for next page...`);
           const hasNext = await this.hasNextPage();
           
           if (!hasNext) {
@@ -724,12 +751,12 @@ export class ScrapingService {
             break;
           }
           
-          // Step 5: Smart wait before moving to next page
-          console.log(`Step 5: Smart wait before moving to page ${currentPage + 1}...`);
+          // Step 4: Smart wait before moving to next page
+          console.log(`Step 4: Smart wait before moving to page ${currentPage + 1}...`);
           await this.smartWaitForPageLoad(pageDocuments.length);
           
-          // Step 6: Go to next page
-          console.log(`Step 6: Moving to page ${currentPage + 1}...`);
+          // Step 5: Go to next page
+          console.log(`Step 5: Moving to page ${currentPage + 1}...`);
           const movedToNext = await this.goToNextPage();
           
           if (!movedToNext) {
