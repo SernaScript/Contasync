@@ -96,6 +96,7 @@ export default function InvoiceDownloadsPage() {
   });
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
   const [showScrapingModal, setShowScrapingModal] = useState(false);
+  const [isScrapingModalAnimating, setIsScrapingModalAnimating] = useState(false);
   const [showXMLModal, setShowXMLModal] = useState(false);
   const [isXMLModalAnimating, setIsXMLModalAnimating] = useState(false);
   const [xmlContent, setXmlContent] = useState<string>('');
@@ -275,7 +276,7 @@ export default function InvoiceDownloadsPage() {
         
         setDownloads(convertedDownloads);
         loadDocuments();
-        setShowScrapingModal(false); // Cerrar modal después del éxito
+        handleCloseScrapingModal(); // Cerrar modal después del éxito con animación
       } else {
         const errorMessage = result.message || result.error || 'Error desconocido';
         setScrapingResult({
@@ -298,6 +299,17 @@ export default function InvoiceDownloadsPage() {
   const handleOpenScrapingModal = () => {
     setShowScrapingModal(true);
     setScrapingResult(null);
+    
+    setTimeout(() => {
+      setIsScrapingModalAnimating(true);
+    }, 100);
+  };
+
+  const handleCloseScrapingModal = () => {
+    setIsScrapingModalAnimating(false);
+    setTimeout(() => {
+      setShowScrapingModal(false);
+    }, 1000);
   };
 
   const handleDownloadFile = async (filePath: string | undefined) => {
@@ -937,8 +949,12 @@ export default function InvoiceDownloadsPage() {
 
         {/* Modal de Configuración de Scraping */}
         {showScrapingModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-            <div className="bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl">
+          <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 transition-all duration-1000 ease-in-out ${
+            isScrapingModalAnimating ? 'opacity-100' : 'opacity-0'
+          }`}>
+            <div className={`bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl transform transition-all duration-1000 ease-in-out ${
+              isScrapingModalAnimating ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+            }`}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">
                   Migrar información DIAN
@@ -946,7 +962,7 @@ export default function InvoiceDownloadsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowScrapingModal(false)}
+                  onClick={handleCloseScrapingModal}
                   className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
                 >
                   ×
