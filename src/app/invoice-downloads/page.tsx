@@ -974,145 +974,152 @@ export default function InvoiceDownloadsPage() {
                   Configura los parámetros para descargar documentos desde la DIAN automáticamente
                 </p>
                 
-                {/* Instructivo */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <Key className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-blue-900">
-                        Instrucciones para obtener el token de la DIAN
-                      </h3>
-                      <div className="space-y-2 text-blue-800 text-xs">
-                        <div className="space-y-1.5">
-                          <div className="flex items-start gap-2">
-                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                              1
-                            </div>
-                            <div>
-                              <strong>Solicita un token de la DIAN:</strong> Ve al portal de la DIAN y solicita un token de acceso.
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                              2
-                            </div>
-                            <div className="flex items-start gap-1">
-                              <Mail className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <strong>Revisa tu correo:</strong> La DIAN te enviará un correo con el token de acceso.
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                              3
-                            </div>
-                            <div className="flex items-start gap-1">
-                              <MousePointer className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <strong>Busca el botón verde "Ingrese aquí":</strong> En el correo encontrarás este botón.
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                              4
-                            </div>
-                            <div className="flex items-start gap-1">
-                              <Copy className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <strong>Copia el enlace:</strong> Haz clic derecho sobre el botón y selecciona "Copiar enlace".
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                              5
-                            </div>
-                            <div>
-                              <strong>Pega el enlace:</strong> Copia y pega el enlace completo en el campo de abajo.
-                            </div>
-                          </div>
+                {/* Main content area: Left (Inputs) and Right (Instructions) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Left Column: Inputs and Button */}
+                  <div className="space-y-6">
+                    {/* URL Field */}
+                    <div className="space-y-3">
+                      <Label htmlFor="token" className="text-base font-medium">URL de Autenticación DIAN</Label>
+                      <Input
+                        id="token"
+                        type="text"
+                        value={scrapingForm.token}
+                        onChange={(e) => setScrapingForm(prev => ({
+                          ...prev,
+                          token: e.target.value
+                        }))}
+                        placeholder="https://catalogo-vpfe.dian.gov.co/User/AuthToken?pk=10910094%7C70322015&rk=900698993&token=82dadb26-4c96-4da7-9967-ec4a219c40c5"
+                        disabled={isScraping}
+                        className="h-12 text-sm"
+                      />
+                      <p className="text-sm text-gray-500">
+                        Ingresa la URL completa de autenticación de la DIAN
+                      </p>
+                    </div>
+                    
+                    {/* Date Range and Button Row */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <Label htmlFor="startDate" className="text-base font-medium">Fecha de Inicio</Label>
+                          <DatePicker
+                            date={datePickerState.startDate}
+                            onDateChange={handleStartDateChange}
+                            placeholder="Selecciona fecha de inicio"
+                            disabled={isScraping}
+                            openDirection="right"
+                          />
                         </div>
-                        <div className="bg-blue-100 border border-blue-300 rounded p-2 mt-2">
-                          <div className="flex items-start gap-1">
-                            <Info className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs font-medium text-blue-900">
-                                <strong>Consejo:</strong> El enlace debe comenzar con "https://catalogo-vpfe.dian.gov.co/User/AuthToken" y contener parámetros como "pk", "rk" y "token".
-                              </p>
+                        
+                        <div className="space-y-3">
+                          <Label htmlFor="endDate" className="text-base font-medium">Fecha de Fin</Label>
+                          <DatePicker
+                            date={datePickerState.endDate}
+                            onDateChange={handleEndDateChange}
+                            placeholder="Selecciona fecha de fin"
+                            disabled={isScraping}
+                            openDirection="right"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Action Button */}
+                      <div className="flex justify-center">
+                        <Button 
+                          onClick={handleScraping}
+                          disabled={isScraping || !scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate}
+                          className="w-full max-w-md h-14 bg-green-600 hover:bg-green-700 text-base font-medium"
+                        >
+                          {isScraping ? (
+                            <>
+                              <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
+                              Descargando Facturas...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-5 w-5 mr-3" />
+                              Descargar Facturas
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Instructivo */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <Key className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-semibold text-blue-900">
+                          Instrucciones para obtener el token de la DIAN
+                        </h3>
+                        <div className="space-y-2 text-blue-800 text-xs">
+                          <div className="space-y-1.5">
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                1
+                              </div>
+                              <div>
+                                <strong>Solicita un token de la DIAN:</strong> Ve al portal de la DIAN y solicita un token de acceso.
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                2
+                              </div>
+                              <div className="flex items-start gap-1">
+                                <Mail className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <strong>Revisa tu correo:</strong> La DIAN te enviará un correo con el token de acceso.
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                3
+                              </div>
+                              <div className="flex items-start gap-1">
+                                <MousePointer className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <strong>Busca el botón verde "Ingrese aquí":</strong> En el correo encontrarás este botón.
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                4
+                              </div>
+                              <div className="flex items-start gap-1">
+                                <Copy className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <strong>Copia el enlace:</strong> Haz clic derecho sobre el botón y selecciona "Copiar enlace".
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                5
+                              </div>
+                              <div>
+                                <strong>Pega el enlace:</strong> Copia y pega el enlace completo en el campo de abajo.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-blue-100 border border-blue-300 rounded p-2 mt-2">
+                            <div className="flex items-start gap-1">
+                              <Info className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs font-medium text-blue-900">
+                                  <strong>Consejo:</strong> El enlace debe comenzar con "https://catalogo-vpfe.dian.gov.co/User/AuthToken" y contener parámetros como "pk", "rk" y "token".
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-                
-                {/* Three column layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Column 1: Date Range */}
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <Label htmlFor="startDate" className="text-base font-medium">Fecha de Inicio</Label>
-                      <DatePicker
-                        date={datePickerState.startDate}
-                        onDateChange={handleStartDateChange}
-                        placeholder="Selecciona fecha de inicio"
-                        disabled={isScraping}
-                      />
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <Label htmlFor="endDate" className="text-base font-medium">Fecha de Fin</Label>
-                      <DatePicker
-                        date={datePickerState.endDate}
-                        onDateChange={handleEndDateChange}
-                        placeholder="Selecciona fecha de fin"
-                        disabled={isScraping}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Column 2: URL */}
-                  <div className="space-y-3">
-                    <Label htmlFor="token" className="text-base font-medium">URL de Autenticación DIAN</Label>
-                    <Input
-                      id="token"
-                      type="text"
-                      value={scrapingForm.token}
-                      onChange={(e) => setScrapingForm(prev => ({
-                        ...prev,
-                        token: e.target.value
-                      }))}
-                      placeholder="https://catalogo-vpfe.dian.gov.co/User/AuthToken?pk=10910094%7C70322015&rk=900698993&token=82dadb26-4c96-4da7-9967-ec4a219c40c5"
-                      disabled={isScraping}
-                      className="h-12 text-sm"
-                    />
-                    <p className="text-sm text-gray-500">
-                      Ingresa la URL completa de autenticación de la DIAN
-                    </p>
-                  </div>
-                  
-                  {/* Column 3: Action Button */}
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={handleScraping}
-                      disabled={isScraping || !scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate}
-                      className="w-full h-14 bg-green-600 hover:bg-green-700 text-base font-medium"
-                    >
-                      {isScraping ? (
-                        <>
-                          <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
-                          Descargando Facturas...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="h-5 w-5 mr-3" />
-                          Descargar Facturas
-                        </>
-                      )}
-                    </Button>
                   </div>
                 </div>
                 

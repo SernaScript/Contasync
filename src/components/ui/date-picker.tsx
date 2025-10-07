@@ -13,13 +13,15 @@ interface DatePickerProps {
   onDateChange?: (date: Date | undefined) => void
   placeholder?: string
   disabled?: boolean
+  openDirection?: 'down' | 'right'
 }
 
 export function DatePicker({
   date,
   onDateChange,
   placeholder = "Selecciona una fecha",
-  disabled = false
+  disabled = false,
+  openDirection = 'down'
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [currentMonth, setCurrentMonth] = React.useState(date || new Date())
@@ -83,7 +85,10 @@ export function DatePicker({
           />
           
                      {/* Calendar */}
-           <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-72">
+           <div className={cn(
+             "absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-72",
+             openDirection === 'down' ? "top-full left-0 mt-1" : "left-full top-0 ml-1"
+           )}>
              {/* Header */}
              <div className="flex items-center justify-between mb-3">
                <Button
