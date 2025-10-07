@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { PageLoader } from '@/components/ui/loading'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { SidebarProvider } from '@/contexts/SidebarContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,9 +21,11 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
-          <PageLoader>
-            {children}
-          </PageLoader>
+          <SidebarProvider>
+            <PageLoader>
+              {children}
+            </PageLoader>
+          </SidebarProvider>
         </AuthProvider>
       </body>
     </html>
