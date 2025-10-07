@@ -21,7 +21,17 @@ import {
   Check,
   X,
   Database,
-  Save
+  Save,
+  Calculator,
+  FileText,
+  Table,
+  Download,
+  Info,
+  UserCheck,
+  Building2,
+  Package,
+  BarChart3,
+  Target
 } from "lucide-react"
 
 interface Role {
@@ -65,12 +75,95 @@ interface SiigoCredentials {
   updatedAt?: string;
 }
 
+interface AccountingRule {
+  id?: string;
+  name: string;
+  description: string;
+  ruleType: string;
+  isActive: boolean;
+  priority: number;
+  createdAt?: string;
+  updatedAt?: string;
+  excludedThirdParties?: ExcludedThirdParty[];
+  providerAccountMappings?: ProviderAccountMapping[];
+}
+
+interface ExcludedThirdParty {
+  id?: string;
+  nit: string;
+  description: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ProviderAccountMapping {
+  id?: string;
+  providerNit: string;
+  providerName: string;
+  description: string;
+  accountingAccount: string;
+  paymentId: string;
+  isActive: boolean;
+  createdBy: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface SiigoTable {
+  id?: string;
+  name: string;
+  description: string;
+  tableType: 'CUSTOMERS' | 'SUPPLIERS' | 'PRODUCTS' | 'ACCOUNTS' | 'COST_CENTERS' | 'OTHER';
+  isActive: boolean;
+  createdBy: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Tablas predefinidas de Siigo
+const PREDEFINED_SIIGO_TABLES = [
+  {
+    name: 'Clientes',
+    description: 'Tabla de clientes de Siigo para sincronización de datos de terceros',
+    tableType: 'CUSTOMERS' as const,
+    icon: UserCheck
+  },
+  {
+    name: 'Proveedores',
+    description: 'Tabla de proveedores de Siigo para gestión de cuentas por pagar',
+    tableType: 'SUPPLIERS' as const,
+    icon: Building2
+  },
+  {
+    name: 'Productos y Servicios',
+    description: 'Catálogo de productos y servicios de Siigo para facturación',
+    tableType: 'PRODUCTS' as const,
+    icon: Package
+  },
+  {
+    name: 'Plan de Cuentas',
+    description: 'Plan de cuentas contables de Siigo para contabilización',
+    tableType: 'ACCOUNTS' as const,
+    icon: BarChart3
+  },
+  {
+    name: 'Centros de Costo',
+    description: 'Centros de costo de Siigo para distribución de gastos',
+    tableType: 'COST_CENTERS' as const,
+    icon: Target
+  }
+];
+
 export default function ConfiguracionPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("roles");
+  const [activeTab, setActiveTab] = useState("accounting-rules");
   const [siigoCredentials, setSiigoCredentials] = useState<SiigoCredentials>({
     apiUser: '',
     accessKey: '',
@@ -96,6 +189,49 @@ export default function ConfiguracionPage() {
     details?: any;
   } | null>(null);
   const [hasSuccessfulConnection, setHasSuccessfulConnection] = useState(false);
+  const [accountingRules, setAccountingRules] = useState<AccountingRule[]>([]);
+  const [isEditingRule, setIsEditingRule] = useState(false);
+  const [editingRule, setEditingRule] = useState<AccountingRule | null>(null);
+  const [ruleForm, setRuleForm] = useState<AccountingRule>({
+    name: '',
+    description: '',
+    ruleType: 'EXCLUDED_THIRD_PARTIES',
+    isActive: true,
+    priority: 1
+  });
+  const [excludedThirdParties, setExcludedThirdParties] = useState<ExcludedThirdParty[]>([]);
+  const [isManagingExcludedParties, setIsManagingExcludedParties] = useState(false);
+  const [newExcludedParty, setNewExcludedParty] = useState<ExcludedThirdParty>({
+    nit: '',
+    description: '',
+    isActive: true,
+    createdBy: ''
+  });
+  const [providerAccountMappings, setProviderAccountMappings] = useState<ProviderAccountMapping[]>([]);
+  const [isManagingProviderMappings, setIsManagingProviderMappings] = useState(false);
+  const [newProviderMapping, setNewProviderMapping] = useState<ProviderAccountMapping>({
+    providerNit: '',
+    providerName: '',
+    description: '',
+    accountingAccount: '',
+    paymentId: '',
+    isActive: true,
+    createdBy: ''
+  });
+
+  // Estados para Tablas de Siigo
+  const [siigoTables, setSiigoTables] = useState<SiigoTable[]>([]);
+  const [isEditingSiigoTable, setIsEditingSiigoTable] = useState(false);
+  const [editingSiigoTable, setEditingSiigoTable] = useState<SiigoTable | null>(null);
+  const [isShowingPredefinedTables, setIsShowingPredefinedTables] = useState(false);
+  const [isModalAnimating, setIsModalAnimating] = useState(false);
+  const [siigoTableForm, setSiigoTableForm] = useState<SiigoTable>({
+    name: '',
+    description: '',
+    tableType: 'OTHER',
+    isActive: true,
+    createdBy: ''
+  });
 
   const loadRoles = async () => {
     setLoading(true);
@@ -145,6 +281,72 @@ export default function ConfiguracionPage() {
       console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAccountingRules = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/accounting-rules');
+      const result = await response.json();
+
+      if (result.success) {
+        setAccountingRules(result.data.rules);
+      } else {
+        console.error('Error cargando reglas contables:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSiigoTables = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/siigo-tables');
+      const result = await response.json();
+
+      if (result.success) {
+        setSiigoTables(result.data.siigoTables);
+      } else {
+        console.error('Error cargando tablas de Siigo:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadExcludedThirdParties = async (ruleId: string) => {
+    try {
+      const response = await fetch(`/api/accounting-rules/${ruleId}/excluded-parties`);
+      const result = await response.json();
+
+      if (result.success) {
+        setExcludedThirdParties(result.data.excludedParties);
+      } else {
+        console.error('Error cargando terceros excluidos:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const loadProviderAccountMappings = async (ruleId: string) => {
+    try {
+      const response = await fetch(`/api/accounting-rules/${ruleId}/provider-mappings`);
+      const result = await response.json();
+
+      if (result.success) {
+        setProviderAccountMappings(result.data.providerMappings);
+      } else {
+        console.error('Error cargando mapeos de proveedores:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
@@ -219,6 +421,8 @@ export default function ConfiguracionPage() {
     loadPermissions();
     loadUsers();
     loadSiigoCredentials();
+    loadAccountingRules();
+    loadSiigoTables();
   }, []);
 
   const handleSiigoSave = async () => {
@@ -496,6 +700,482 @@ export default function ConfiguracionPage() {
     });
   };
 
+  const handleEditRule = (rule: AccountingRule) => {
+    setEditingRule(rule);
+    setRuleForm({
+      name: rule.name,
+      description: rule.description,
+      ruleType: rule.ruleType,
+      isActive: rule.isActive,
+      priority: rule.priority
+    });
+    setIsEditingRule(true);
+  };
+
+  const handleRuleSave = async () => {
+    try {
+      setLoading(true);
+      
+      let response;
+      if (editingRule?.id) {
+        // Actualizar regla existente
+        response = await fetch('/api/accounting-rules', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: editingRule.id,
+            ...ruleForm
+          }),
+        });
+      } else {
+        // Crear nueva regla
+        response = await fetch('/api/accounting-rules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(ruleForm),
+        });
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Recargar las reglas
+        await loadAccountingRules();
+        setIsEditingRule(false);
+        setEditingRule(null);
+        setRuleForm({
+          name: '',
+          description: '',
+          ruleType: 'EXCLUDED_THIRD_PARTIES',
+          isActive: true,
+          priority: 1
+        });
+        console.log('Regla contable guardada exitosamente');
+      } else {
+        console.error('Error guardando regla contable:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error guardando regla contable:', error);
+      alert('Error al guardar la regla contable');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRuleCancel = () => {
+    setIsEditingRule(false);
+    setEditingRule(null);
+    setRuleForm({
+      name: '',
+      description: '',
+      ruleType: 'EXCLUDED_THIRD_PARTIES',
+      isActive: true,
+      priority: 1
+    });
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta regla contable?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/accounting-rules/${ruleId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadAccountingRules();
+        console.log('Regla contable eliminada exitosamente');
+      } else {
+        console.error('Error eliminando regla contable:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error eliminando regla contable:', error);
+      alert('Error al eliminar la regla contable');
+    }
+  };
+
+  const handleManageExcludedParties = async (rule: AccountingRule) => {
+    setEditingRule(rule);
+    setIsManagingExcludedParties(true);
+    if (rule.id) {
+      await loadExcludedThirdParties(rule.id);
+    }
+  };
+
+  const handleAddExcludedParty = async () => {
+    if (!newExcludedParty.nit.trim() || !newExcludedParty.description.trim()) {
+      alert('El NIT y la descripción son requeridos');
+      return;
+    }
+
+    if (!editingRule?.id) {
+      alert('Error: No se ha seleccionado una regla');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/accounting-rules/${editingRule.id}/excluded-parties`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...newExcludedParty,
+          createdBy: 'Usuario Actual' // TODO: Obtener del contexto de autenticación
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadExcludedThirdParties(editingRule.id);
+        setNewExcludedParty({
+          nit: '',
+          description: '',
+          isActive: true,
+          createdBy: ''
+        });
+        console.log('Tercero excluido agregado exitosamente');
+      } else {
+        console.error('Error agregando tercero excluido:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error agregando tercero excluido:', error);
+      alert('Error al agregar el tercero excluido');
+    }
+  };
+
+  const handleDeleteExcludedParty = async (partyId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este tercero excluido?')) {
+      return;
+    }
+
+    if (!editingRule?.id) {
+      alert('Error: No se ha seleccionado una regla');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/accounting-rules/${editingRule.id}/excluded-parties/${partyId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadExcludedThirdParties(editingRule.id);
+        console.log('Tercero excluido eliminado exitosamente');
+      } else {
+        console.error('Error eliminando tercero excluido:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error eliminando tercero excluido:', error);
+      alert('Error al eliminar el tercero excluido');
+    }
+  };
+
+  const handleCloseExcludedParties = () => {
+    setIsManagingExcludedParties(false);
+    setEditingRule(null);
+    setExcludedThirdParties([]);
+    setNewExcludedParty({
+      nit: '',
+      description: '',
+      isActive: true,
+      createdBy: ''
+    });
+  };
+
+  const handleManageProviderMappings = async (rule: AccountingRule) => {
+    setEditingRule(rule);
+    setIsManagingProviderMappings(true);
+    if (rule.id) {
+      await loadProviderAccountMappings(rule.id);
+    }
+  };
+
+  const handleAddProviderMapping = async () => {
+    if (!newProviderMapping.providerNit.trim() || !newProviderMapping.providerName.trim() || !newProviderMapping.description.trim() || !newProviderMapping.accountingAccount.trim() || !newProviderMapping.paymentId.trim()) {
+      alert('El NIT del proveedor, nombre, descripción, cuenta de contabilización y ID del pago son requeridos');
+      return;
+    }
+
+    if (!editingRule?.id) {
+      alert('Error: No se ha seleccionado una regla');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/accounting-rules/${editingRule.id}/provider-mappings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...newProviderMapping,
+          createdBy: 'Usuario Actual' // TODO: Obtener del contexto de autenticación
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadProviderAccountMappings(editingRule.id);
+        setNewProviderMapping({
+          providerNit: '',
+          providerName: '',
+          description: '',
+          accountingAccount: '',
+          paymentId: '',
+          isActive: true,
+          createdBy: ''
+        });
+        console.log('Asignación de proveedor agregada exitosamente');
+      } else {
+        console.error('Error agregando asignación de proveedor:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error agregando asignación de proveedor:', error);
+      alert('Error al agregar la asignación de proveedor');
+    }
+  };
+
+  const handleDeleteProviderMapping = async (mappingId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este mapeo de proveedor?')) {
+      return;
+    }
+
+    if (!editingRule?.id) {
+      alert('Error: No se ha seleccionado una regla');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/accounting-rules/${editingRule.id}/provider-mappings/${mappingId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadProviderAccountMappings(editingRule.id);
+        console.log('Mapeo de proveedor eliminado exitosamente');
+      } else {
+        console.error('Error eliminando mapeo de proveedor:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error eliminando mapeo de proveedor:', error);
+      alert('Error al eliminar el mapeo de proveedor');
+    }
+  };
+
+  const handleCloseProviderMappings = () => {
+    setIsManagingProviderMappings(false);
+    setEditingRule(null);
+    setProviderAccountMappings([]);
+    setNewProviderMapping({
+      providerNit: '',
+      providerName: '',
+      description: '',
+      accountingAccount: '',
+      paymentId: '',
+      isActive: true,
+      createdBy: ''
+    });
+  };
+
+  // Funciones para Tablas de Siigo
+  const handleEditSiigoTable = (table: SiigoTable) => {
+    setEditingSiigoTable(table);
+    setSiigoTableForm({
+      name: table.name,
+      description: table.description,
+      tableType: table.tableType,
+      isActive: table.isActive,
+      createdBy: table.createdBy
+    });
+    setIsEditingSiigoTable(true);
+  };
+
+  const handleSiigoTableSave = async () => {
+    if (!siigoTableForm.name.trim() || !siigoTableForm.description.trim()) {
+      alert('El nombre y descripción son requeridos');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = editingSiigoTable ? `/api/siigo-tables/${editingSiigoTable.id}` : '/api/siigo-tables';
+      const method = editingSiigoTable ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(siigoTableForm),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadSiigoTables();
+        setIsEditingSiigoTable(false);
+        setEditingSiigoTable(null);
+        setSiigoTableForm({
+          name: '',
+          description: '',
+          tableType: 'OTHER',
+          isActive: true,
+          createdBy: ''
+        });
+        console.log('Tabla de Siigo guardada exitosamente');
+      } else {
+        console.error('Error guardando tabla de Siigo:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error guardando tabla de Siigo:', error);
+      alert('Error al guardar la tabla de Siigo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSiigoTableCancel = () => {
+    setIsEditingSiigoTable(false);
+    setEditingSiigoTable(null);
+    setSiigoTableForm({
+      name: '',
+      description: '',
+      tableType: 'OTHER',
+      isActive: true,
+      createdBy: ''
+    });
+  };
+
+  const handleDeleteSiigoTable = async (tableId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta tabla de Siigo?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/siigo-tables/${tableId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadSiigoTables();
+        console.log('Tabla de Siigo eliminada exitosamente');
+      } else {
+        console.error('Error eliminando tabla de Siigo:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error eliminando tabla de Siigo:', error);
+      alert('Error al eliminar la tabla de Siigo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMigratePredefinedTable = async (predefinedTable: typeof PREDEFINED_SIIGO_TABLES[0]) => {
+    try {
+      setLoading(true);
+      
+      // Verificar si la tabla ya existe
+      const existingTable = siigoTables.find(table => table.tableType === predefinedTable.tableType);
+      if (existingTable) {
+        alert('Esta tabla ya ha sido migrada anteriormente');
+        return;
+      }
+
+      const response = await fetch('/api/siigo-tables', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: predefinedTable.name,
+          description: predefinedTable.description,
+          tableType: predefinedTable.tableType,
+          isActive: true,
+          createdBy: 'Sistema' // Por ahora usamos 'Sistema' como creador
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadSiigoTables();
+        setIsShowingPredefinedTables(false);
+        console.log('Tabla de Siigo migrada exitosamente');
+        alert(`Tabla "${predefinedTable.name}" migrada exitosamente`);
+      } else {
+        console.error('Error migrando tabla de Siigo:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error migrando tabla de Siigo:', error);
+      alert('Error al migrar la tabla de Siigo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShowPredefinedTables = () => {
+    setIsShowingPredefinedTables(true);
+    setIsEditingSiigoTable(false);
+    setEditingSiigoTable(null);
+    // Iniciar animación de entrada
+    setTimeout(() => setIsModalAnimating(true), 10);
+  };
+
+  const handleClosePredefinedTables = () => {
+    // Iniciar animación de salida
+    setIsModalAnimating(false);
+    setTimeout(() => {
+      setIsShowingPredefinedTables(false);
+    }, 300); // Duración de la animación
+  };
+
+  const getRuleTypeInfo = (ruleType: string) => {
+    const types: { [key: string]: { label: string; description: string; icon: React.ReactNode } } = {
+      'EXCLUDED_THIRD_PARTIES': {
+        label: 'Terceros Excluidos',
+        description: 'Terceros que no deseas incluir dentro de la descarga y visualización de archivos',
+        icon: <Users className="h-4 w-4" />
+      },
+      'PROVIDER_ACCOUNT_MAPPING': {
+        label: 'Asignar Cuenta Según Proveedor',
+        description: 'Asigna automáticamente facturas de proveedores específicos a cuentas contables',
+        icon: <Database className="h-4 w-4" />
+      }
+    };
+    return types[ruleType] || {
+      label: ruleType,
+      description: 'Tipo de regla no definido',
+      icon: <FileText className="h-4 w-4" />
+    };
+  };
+
   const translateSiigoError = (status: number, message: string) => {
     const errorMessages: { [key: number]: string } = {
       200: 'Conexión exitosa con SIIGO API',
@@ -534,7 +1214,7 @@ export default function ConfiguracionPage() {
 
         {/* Tabs de configuración */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="roles" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Roles
@@ -542,6 +1222,14 @@ export default function ConfiguracionPage() {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Usuarios
+            </TabsTrigger>
+            <TabsTrigger value="accounting-rules" className="flex items-center gap-2">
+              <Calculator className="h-4 w-4" />
+              Reglas Contables
+            </TabsTrigger>
+            <TabsTrigger value="siigo-tables" className="flex items-center gap-2">
+              <Table className="h-4 w-4" />
+              Tablas de Siigo
             </TabsTrigger>
             <TabsTrigger value="integrations" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
@@ -744,6 +1432,917 @@ export default function ConfiguracionPage() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+          </TabsContent>
+
+          {/* Tab de Reglas Contables */}
+          <TabsContent value="accounting-rules" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Gestión de Reglas Contables</CardTitle>
+                    <CardDescription>
+                      Configura reglas automáticas para la contabilización de transacciones
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => {
+                      setEditingRule(null);
+                      setRuleForm({
+                        name: '',
+                        description: '',
+                        ruleType: 'EXCLUDED_THIRD_PARTIES',
+                        isActive: true,
+                        priority: 1
+                      });
+                      setIsEditingRule(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nueva Regla
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Cargando reglas contables...</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {accountingRules.map((rule) => {
+                      const ruleTypeInfo = getRuleTypeInfo(rule.ruleType);
+                      return (
+                        <Card key={rule.id} className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                {ruleTypeInfo.icon}
+                              </div>
+                              <div>
+                                <h3 className="font-medium">{rule.name}</h3>
+                                <p className="text-sm text-gray-600">{rule.description}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                    {ruleTypeInfo.label}
+                                  </Badge>
+                                  <Badge className={rule.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                    {rule.isActive ? 'Activa' : 'Inactiva'}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    Prioridad: {rule.priority}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {rule.ruleType === 'EXCLUDED_THIRD_PARTIES' && (
+                                <div className="text-sm text-gray-500 mb-2">
+                                  <div>Terceros excluidos: <span className="font-medium">{rule.excludedThirdParties?.length || 0}</span></div>
+                                </div>
+                              )}
+                              {rule.ruleType === 'PROVIDER_ACCOUNT_MAPPING' && (
+                                <div className="text-sm text-gray-500 mb-2">
+                                  <div>Proveedores mapeados: <span className="font-medium">{rule.providerAccountMappings?.length || 0}</span></div>
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                {rule.ruleType === 'EXCLUDED_THIRD_PARTIES' && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleManageExcludedParties(rule)}
+                                    className="text-blue-600 hover:text-blue-700"
+                                  >
+                                    <Users className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {rule.ruleType === 'PROVIDER_ACCOUNT_MAPPING' && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleManageProviderMappings(rule)}
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    <Database className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleEditRule(rule)}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => rule.id && handleDeleteRule(rule.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Información específica del tipo de regla */}
+                          {rule.ruleType === 'EXCLUDED_THIRD_PARTIES' && (
+                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                              <h4 className="text-sm font-medium text-blue-700 mb-1">Descripción:</h4>
+                              <p className="text-sm text-blue-600">{ruleTypeInfo.description}</p>
+                            </div>
+                          )}
+                          
+                          {rule.ruleType === 'PROVIDER_ACCOUNT_MAPPING' && (
+                            <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                              <h4 className="text-sm font-medium text-green-700 mb-1">Descripción:</h4>
+                              <p className="text-sm text-green-600">{ruleTypeInfo.description}</p>
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+                    
+                    {accountingRules.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Calculator className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No hay reglas contables configuradas</p>
+                        <p className="text-sm">Crea tu primera regla para automatizar la contabilización</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Modal de Edición/Creación de Regla */}
+            {isEditingRule && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle>
+                    {editingRule ? 'Editar Regla Contable' : 'Nueva Regla Contable'}
+                  </CardTitle>
+                  <CardDescription>
+                    {editingRule 
+                      ? `Modifica la regla: ${editingRule.name}`
+                      : 'Crea una nueva regla para automatizar la contabilización'
+                    }
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ruleName">Nombre de la Regla</Label>
+                        <Input
+                          id="ruleName"
+                          value={ruleForm.name}
+                          onChange={(e) => setRuleForm(prev => ({
+                            ...prev,
+                            name: e.target.value
+                          }))}
+                          placeholder="Ej: Terceros Excluidos"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="ruleType">Tipo de Regla</Label>
+                        <select
+                          id="ruleType"
+                          value={ruleForm.ruleType}
+                          onChange={(e) => setRuleForm(prev => ({
+                            ...prev,
+                            ruleType: e.target.value
+                          }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="EXCLUDED_THIRD_PARTIES">Terceros Excluidos</option>
+                          <option value="PROVIDER_ACCOUNT_MAPPING">Asignar Cuenta Según Proveedor</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="rulePriority">Prioridad</Label>
+                        <Input
+                          id="rulePriority"
+                          type="number"
+                          min="1"
+                          value={ruleForm.priority}
+                          onChange={(e) => setRuleForm(prev => ({
+                            ...prev,
+                            priority: parseInt(e.target.value) || 1
+                          }))}
+                          placeholder="1"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="ruleDescription">Descripción</Label>
+                      <Input
+                        id="ruleDescription"
+                        value={ruleForm.description}
+                        onChange={(e) => setRuleForm(prev => ({
+                          ...prev,
+                          description: e.target.value
+                        }))}
+                        placeholder={
+                          ruleForm.ruleType === 'EXCLUDED_THIRD_PARTIES' 
+                            ? "Terceros que no deseas incluir en descargas y visualizaciones"
+                            : "Asignación automática de cuentas contables según proveedor"
+                        }
+                      />
+                    </div>
+                    
+                    
+                    {/* Información específica para Terceros Excluidos */}
+                    {ruleForm.ruleType === 'EXCLUDED_THIRD_PARTIES' && (
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="h-4 w-4 text-blue-600" />
+                          <h4 className="font-medium text-blue-800">Terceros Excluidos</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Esta regla te permitirá excluir terceros específicos de las descargas y visualizaciones de archivos. 
+                          Podrás agregar NITs de terceros que no deseas incluir en los procesos automáticos.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Información específica para Asignar Cuenta Según Proveedor */}
+                    {ruleForm.ruleType === 'PROVIDER_ACCOUNT_MAPPING' && (
+                      <div className="p-4 bg-green-50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Database className="h-4 w-4 text-green-600" />
+                          <h4 className="font-medium text-green-800">Asignar Cuenta Según Proveedor</h4>
+                        </div>
+                        <p className="text-sm text-green-700">
+                          Esta regla te permitirá asignar automáticamente facturas de proveedores específicos a cuentas contables. 
+                          Cuando llegue una factura de un proveedor configurado, se aplicará automáticamente la cuenta de contabilización correspondiente.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ruleActive"
+                        checked={ruleForm.isActive}
+                        onCheckedChange={(checked) => setRuleForm(prev => ({
+                          ...prev,
+                          isActive: checked as boolean
+                        }))}
+                      />
+                      <Label htmlFor="ruleActive">Regla activa</Label>
+                    </div>
+                    
+                    <div className="flex gap-2 pt-4">
+                      <Button onClick={handleRuleSave} className="bg-green-600 hover:bg-green-700">
+                        <Save className="h-4 w-4 mr-2" />
+                        {editingRule ? 'Actualizar Regla' : 'Crear Regla'}
+                      </Button>
+                      <Button onClick={handleRuleCancel} variant="outline">
+                        <X className="h-4 w-4 mr-2" />
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Modal de Gestión de Asignación de Cuentas por Proveedor */}
+            {isManagingProviderMappings && editingRule && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5 text-green-600" />
+                    Gestionar Asignación de Cuentas por Proveedor
+                  </CardTitle>
+                  <CardDescription>
+                    Configura qué cuenta de contabilización usar para facturas de proveedores específicos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Formulario para agregar nueva asignación de proveedor */}
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium mb-3">Agregar Nueva Asignación de Proveedor</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="providerNit" className="text-sm">NIT del Proveedor *</Label>
+                          <Input
+                            id="providerNit"
+                            value={newProviderMapping.providerNit}
+                            onChange={(e) => setNewProviderMapping(prev => ({
+                              ...prev,
+                              providerNit: e.target.value
+                            }))}
+                            placeholder="Ej: 900123456-1"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="providerName" className="text-sm">Nombre del Proveedor *</Label>
+                          <Input
+                            id="providerName"
+                            value={newProviderMapping.providerName}
+                            onChange={(e) => setNewProviderMapping(prev => ({
+                              ...prev,
+                              providerName: e.target.value
+                            }))}
+                            placeholder="Nombre del proveedor"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="providerDescription" className="text-sm">Descripción *</Label>
+                          <Input
+                            id="providerDescription"
+                            value={newProviderMapping.description}
+                            onChange={(e) => setNewProviderMapping(prev => ({
+                              ...prev,
+                              description: e.target.value
+                            }))}
+                            placeholder="Descripción de la asignación"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="providerAccountingAccount" className="text-sm">Cuenta de Contabilización *</Label>
+                          <Input
+                            id="providerAccountingAccount"
+                            value={newProviderMapping.accountingAccount}
+                            onChange={(e) => setNewProviderMapping(prev => ({
+                              ...prev,
+                              accountingAccount: e.target.value
+                            }))}
+                            placeholder="Ej: 220501 - Proveedores Nacionales"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="providerPaymentId" className="text-sm">ID del Pago *</Label>
+                          <Input
+                            id="providerPaymentId"
+                            value={newProviderMapping.paymentId}
+                            onChange={(e) => setNewProviderMapping(prev => ({
+                              ...prev,
+                              paymentId: e.target.value
+                            }))}
+                            placeholder="Ej: PAY-123456"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-3">
+                        <Checkbox
+                          id="providerActive"
+                          checked={newProviderMapping.isActive}
+                          onCheckedChange={(checked) => setNewProviderMapping(prev => ({
+                            ...prev,
+                            isActive: checked as boolean
+                          }))}
+                        />
+                        <Label htmlFor="providerActive" className="text-sm">Regla activa</Label>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          onClick={handleAddProviderMapping}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Agregar Asignación
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Tabla de asignaciones de proveedores */}
+                    <div>
+                      <h4 className="font-medium mb-3">Asignaciones de Proveedores ({providerAccountMappings.length})</h4>
+                      {providerAccountMappings.length === 0 ? (
+                        <div className="text-center py-6 text-gray-500">
+                          <Database className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">No hay asignaciones de proveedores configuradas</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse border border-gray-300">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">NIT</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Nombre</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Descripción</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Cuenta Contabilización</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">ID Pago</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Estado</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Creado por</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Fecha Creación</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Fecha Actualización</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Actualizado por</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {providerAccountMappings.map((mapping) => (
+                                <tr key={mapping.id} className="hover:bg-gray-50">
+                                  <td className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-900">
+                                    {mapping.providerNit}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.providerName}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.description}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.accountingAccount}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.paymentId}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm">
+                                    <Badge className={mapping.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                      {mapping.isActive ? 'Activo' : 'Inactivo'}
+                                    </Badge>
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.createdBy}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.createdAt ? formatDate(mapping.createdAt) : '-'}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.updatedAt ? formatDate(mapping.updatedAt) : '-'}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {mapping.updatedBy || '-'}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => mapping.id && handleDeleteProviderMapping(mapping.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button onClick={handleCloseProviderMappings} variant="outline">
+                        <X className="h-4 w-4 mr-2" />
+                        Cerrar
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Modal de Gestión de Terceros Excluidos */}
+            {isManagingExcludedParties && editingRule && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Gestionar Terceros Excluidos
+                  </CardTitle>
+                  <CardDescription>
+                    Administra los NITs de terceros que no deseas incluir en descargas y visualizaciones
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Formulario para agregar nuevo tercero excluido */}
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-medium mb-3">Agregar Nuevo Tercero Excluido</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="excludedNit" className="text-sm">NIT *</Label>
+                          <Input
+                            id="excludedNit"
+                            value={newExcludedParty.nit}
+                            onChange={(e) => setNewExcludedParty(prev => ({
+                              ...prev,
+                              nit: e.target.value
+                            }))}
+                            placeholder="Ej: 900123456-1"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="excludedDescription" className="text-sm">Descripción del Cambio *</Label>
+                          <Input
+                            id="excludedDescription"
+                            value={newExcludedParty.description}
+                            onChange={(e) => setNewExcludedParty(prev => ({
+                              ...prev,
+                              description: e.target.value
+                            }))}
+                            placeholder="Descripción del cambio"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 mt-3">
+                        <Checkbox
+                          id="excludedActive"
+                          checked={newExcludedParty.isActive}
+                          onCheckedChange={(checked) => setNewExcludedParty(prev => ({
+                            ...prev,
+                            isActive: checked as boolean
+                          }))}
+                        />
+                        <Label htmlFor="excludedActive" className="text-sm">Regla activa</Label>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          onClick={handleAddExcludedParty}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Agregar Tercero
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Tabla de terceros excluidos */}
+                    <div>
+                      <h4 className="font-medium mb-3">Terceros Excluidos ({excludedThirdParties.length})</h4>
+                      {excludedThirdParties.length === 0 ? (
+                        <div className="text-center py-6 text-gray-500">
+                          <Users className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">No hay terceros excluidos configurados</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse border border-gray-300">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">NIT</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Descripción</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Estado</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Creado por</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Fecha Creación</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Fecha Actualización</th>
+                                <th className="border border-gray-300 px-3 py-2 text-left text-sm font-medium text-gray-700">Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {excludedThirdParties.map((party) => (
+                                <tr key={party.id} className="hover:bg-gray-50">
+                                  <td className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-900">
+                                    {party.nit}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {party.description}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm">
+                                    <Badge className={party.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                      {party.isActive ? 'Activo' : 'Inactivo'}
+                                    </Badge>
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {party.createdBy}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {party.createdAt ? formatDate(party.createdAt) : '-'}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm text-gray-600">
+                                    {party.updatedAt ? formatDate(party.updatedAt) : '-'}
+                                  </td>
+                                  <td className="border border-gray-300 px-3 py-2 text-sm">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => party.id && handleDeleteExcludedParty(party.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Botones de acción */}
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button onClick={handleCloseExcludedParties} variant="outline">
+                        <X className="h-4 w-4 mr-2" />
+                        Cerrar
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Tab de Tablas de Siigo */}
+          <TabsContent value="siigo-tables" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Gestión de Tablas de Siigo</CardTitle>
+                    <CardDescription>
+                      Administra las tablas de referencia para la integración con Siigo
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    onClick={handleShowPredefinedTables}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Nueva Tabla
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {siigoTables.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Table className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg font-medium mb-2">No hay tablas de Siigo configuradas</p>
+                    <p className="text-sm">Crea tu primera tabla para comenzar</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {siigoTables.map((table) => (
+                      <Card key={table.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="font-semibold text-lg">{table.name}</h3>
+                              <Badge className={table.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                {table.isActive ? 'Activo' : 'Inactivo'}
+                              </Badge>
+                              <Badge variant="outline">
+                                {table.tableType}
+                              </Badge>
+                            </div>
+                            <p className="text-gray-600 text-sm mb-2">{table.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>Creado por: {table.createdBy}</span>
+                              <span>Creado: {table.createdAt ? new Date(table.createdAt).toLocaleDateString() : '-'}</span>
+                              {table.updatedAt && (
+                                <span>Actualizado: {new Date(table.updatedAt).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditSiigoTable(table)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteSiigoTable(table.id!)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Formulario para crear/editar tabla de Siigo */}
+            {isEditingSiigoTable && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {editingSiigoTable ? 'Editar Tabla de Siigo' : 'Nueva Tabla de Siigo'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="siigoTableName" className="text-sm">Nombre *</Label>
+                      <Input
+                        id="siigoTableName"
+                        value={siigoTableForm.name}
+                        onChange={(e) => setSiigoTableForm(prev => ({
+                          ...prev,
+                          name: e.target.value
+                        }))}
+                        placeholder="Nombre de la tabla"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="siigoTableType" className="text-sm">Tipo de Tabla *</Label>
+                      <select
+                        id="siigoTableType"
+                        value={siigoTableForm.tableType}
+                        onChange={(e) => setSiigoTableForm(prev => ({
+                          ...prev,
+                          tableType: e.target.value as any
+                        }))}
+                        className="w-full h-8 px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="CUSTOMERS">Clientes</option>
+                        <option value="SUPPLIERS">Proveedores</option>
+                        <option value="PRODUCTS">Productos</option>
+                        <option value="ACCOUNTS">Cuentas</option>
+                        <option value="COST_CENTERS">Centros de Costo</option>
+                        <option value="OTHER">Otro</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="siigoTableDescription" className="text-sm">Descripción *</Label>
+                    <Input
+                      id="siigoTableDescription"
+                      value={siigoTableForm.description}
+                      onChange={(e) => setSiigoTableForm(prev => ({
+                        ...prev,
+                        description: e.target.value
+                      }))}
+                      placeholder="Descripción de la tabla"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="siigoTableActive"
+                      checked={siigoTableForm.isActive}
+                      onCheckedChange={(checked) => setSiigoTableForm(prev => ({
+                        ...prev,
+                        isActive: checked as boolean
+                      }))}
+                    />
+                    <Label htmlFor="siigoTableActive" className="text-sm">Tabla activa</Label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleSiigoTableCancel}
+                      className="flex items-center gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleSiigoTableSave}
+                      className="flex items-center gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      {editingSiigoTable ? 'Actualizar' : 'Crear'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Modal para mostrar tablas predefinidas */}
+            {isShowingPredefinedTables && (
+              <div className={`fixed inset-0 flex items-center justify-center z-50 p-4 transition-all duration-300 ${
+                isModalAnimating 
+                  ? 'bg-black bg-opacity-50' 
+                  : 'bg-black bg-opacity-0'
+              }`}>
+                <div className={`bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto transition-all duration-300 transform ${
+                  isModalAnimating 
+                    ? 'scale-100 opacity-100 translate-y-0' 
+                    : 'scale-95 opacity-0 translate-y-4'
+                }`}>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Tablas de Siigo Disponibles</h2>
+                        <p className="text-gray-600 mt-1">
+                          Selecciona las tablas que deseas migrar desde Siigo
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleClosePredefinedTables}
+                        className="flex items-center gap-2"
+                      >
+                        <X className="h-4 w-4" />
+                        Cerrar
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+                      {PREDEFINED_SIIGO_TABLES.map((table, index) => {
+                        const isAlreadyMigrated = siigoTables.some(existingTable => 
+                          existingTable.tableType === table.tableType
+                        );
+                        const IconComponent = table.icon;
+                        
+                        return (
+                          <Card 
+                            key={index} 
+                            className={`p-3 transition-all duration-300 ${
+                              isAlreadyMigrated 
+                                ? 'opacity-50' 
+                                : 'hover:shadow-md hover:scale-105 cursor-pointer'
+                            } ${
+                              isModalAnimating 
+                                ? 'animate-in slide-in-from-bottom-4 fade-in' 
+                                : 'animate-out slide-out-to-bottom-4 fade-out'
+                            }`}
+                            style={{
+                              animationDelay: `${index * 100}ms`,
+                              animationFillMode: 'both'
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <IconComponent className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-semibold text-sm text-gray-900 truncate">{table.name}</h3>
+                                  {isAlreadyMigrated && (
+                                    <Badge className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5">
+                                      Migrada
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-gray-600 text-xs mb-2 line-clamp-2">{table.description}</p>
+                                <div className="flex items-center justify-between">
+                                  <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                                    {table.tableType}
+                                  </Badge>
+                                  <Button
+                                    onClick={() => handleMigratePredefinedTable(table)}
+                                    disabled={isAlreadyMigrated}
+                                    className="flex items-center gap-1 h-6 px-2 text-xs"
+                                    size="sm"
+                                  >
+                                    {isAlreadyMigrated ? (
+                                      <>
+                                        <Check className="h-3 w-3" />
+                                        Ya Migrada
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Download className="h-3 w-3" />
+                                        Migrar
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    
+                    {siigoTables.length > 0 && (
+                      <div className={`p-4 bg-blue-50 rounded-lg transition-all duration-300 ${
+                        isModalAnimating 
+                          ? 'animate-in slide-in-from-bottom-4 fade-in' 
+                          : 'animate-out slide-out-to-bottom-4 fade-out'
+                      }`}
+                      style={{
+                        animationDelay: `${PREDEFINED_SIIGO_TABLES.length * 100}ms`,
+                        animationFillMode: 'both'
+                      }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Info className="h-5 w-5 text-blue-600" />
+                          <h4 className="font-medium text-blue-900">Tablas ya migradas</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Las tablas marcadas como "Ya Migrada" no pueden ser migradas nuevamente. 
+                          Si necesitas actualizar una tabla existente, puedes editarla desde la lista principal.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </TabsContent>
 
