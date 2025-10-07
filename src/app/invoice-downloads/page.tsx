@@ -22,7 +22,11 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Bot
+  Bot,
+  Mail,
+  MousePointer,
+  Copy,
+  Info
 } from "lucide-react"
 
 interface InvoiceDownload {
@@ -954,6 +958,81 @@ export default function InvoiceDownloadsPage() {
                   Configura los parámetros para descargar documentos desde la DIAN automáticamente
                 </p>
                 
+                {/* Instructivo */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Key className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold text-blue-900">
+                        Instrucciones para obtener el token de la DIAN
+                      </h3>
+                      <div className="space-y-2 text-blue-800 text-xs">
+                        <div className="space-y-1.5">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              1
+                            </div>
+                            <div>
+                              <strong>Solicita un token de la DIAN:</strong> Ve al portal de la DIAN y solicita un token de acceso.
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              2
+                            </div>
+                            <div className="flex items-start gap-1">
+                              <Mail className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <strong>Revisa tu correo:</strong> La DIAN te enviará un correo con el token de acceso.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              3
+                            </div>
+                            <div className="flex items-start gap-1">
+                              <MousePointer className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <strong>Busca el botón verde "Ingrese aquí":</strong> En el correo encontrarás este botón.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              4
+                            </div>
+                            <div className="flex items-start gap-1">
+                              <Copy className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <strong>Copia el enlace:</strong> Haz clic derecho sobre el botón y selecciona "Copiar enlace".
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                              5
+                            </div>
+                            <div>
+                              <strong>Pega el enlace:</strong> Copia y pega el enlace completo en el campo de abajo.
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-blue-100 border border-blue-300 rounded p-2 mt-2">
+                          <div className="flex items-start gap-1">
+                            <Info className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-medium text-blue-900">
+                                <strong>Consejo:</strong> El enlace debe comenzar con "https://catalogo-vpfe.dian.gov.co/User/AuthToken" y contener parámetros como "pk", "rk" y "token".
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 {/* Three column layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Column 1: Date Range */}
@@ -1009,12 +1088,12 @@ export default function InvoiceDownloadsPage() {
                       {isScraping ? (
                         <>
                           <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
-                          Ejecutando Scraping...
+                          Descargando Facturas...
                         </>
                       ) : (
                         <>
                           <Download className="h-5 w-5 mr-3" />
-                          Ejecutar Scraping
+                          Descargar Facturas
                         </>
                       )}
                     </Button>
