@@ -219,6 +219,75 @@ model SiigoCredentials {
   @@map("siigo_credentials")
 }
 
+// Accounting Models
+model AccountingRule {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String
+  ruleType      String   // Tipo de regla: 'EXCLUDED_THIRD_PARTIES', 'PROVIDER_ACCOUNT_MAPPING'
+  isActive      Boolean  @default(true)
+  priority      Int      @default(1) // Prioridad de aplicación (menor número = mayor prioridad)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  excludedThirdParties ExcludedThirdParty[]
+  providerAccountMappings ProviderAccountMapping[]
+
+  @@map("accounting_rules")
+}
+
+model ExcludedThirdParty {
+  id                String   @id @default(cuid())
+  nit               String   @unique // NIT del tercero a excluir
+  description       String   // Descripción del cambio
+  isActive          Boolean  @default(true)
+  createdBy         String   // Usuario que creó el registro
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  accountingRuleId  String
+  accountingRule    AccountingRule @relation(fields: [accountingRuleId], references: [id], onDelete: Cascade)
+
+  @@map("excluded_third_parties")
+}
+
+model ProviderAccountMapping {
+  id                String   @id @default(cuid())
+  providerNit       String   // NIT del proveedor
+  providerName      String   // Nombre del proveedor
+  description       String   // Descripción de la regla
+  accountingAccount String   // Cuenta de contabilización
+  paymentId         String   // ID del pago
+  isActive          Boolean  @default(true)
+  createdBy         String   // Usuario que creó el registro
+  updatedBy         String?  // Usuario que actualizó el registro
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  accountingRuleId  String
+  accountingRule    AccountingRule @relation(fields: [accountingRuleId], references: [id], onDelete: Cascade)
+
+  @@unique([providerNit, accountingRuleId]) // Un proveedor solo puede tener una regla por tipo
+  @@map("provider_account_mappings")
+}
+
+model CostCenter {
+  id          String   @id @default(cuid())
+  code        String   @unique // Código único del centro de costo
+  name        String   // Nombre del centro de costo
+  description String   // Descripción del centro de costo
+  isActive    Boolean  @default(true)
+  createdBy   String   // Usuario que creó el registro
+  updatedBy   String?  // Usuario que actualizó el registro
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cost_centers")
+}
+
 // Scraping Models
 model ScrapedDocument {
   id                String   @id @default(cuid())
