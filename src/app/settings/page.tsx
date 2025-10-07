@@ -1107,6 +1107,13 @@ export default function ConfiguracionPage() {
         return;
       }
 
+      // Si es centros de costos, navegar a la página específica
+      if (predefinedTable.tableType === 'COST_CENTERS') {
+        setIsShowingPredefinedTables(false);
+        window.location.href = '/cost-centers';
+        return;
+      }
+
       const response = await fetch('/api/siigo-tables', {
         method: 'POST',
         headers: {
