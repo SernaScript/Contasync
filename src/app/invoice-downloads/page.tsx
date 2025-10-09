@@ -115,6 +115,11 @@ export default function InvoiceDownloadsPage() {
     totalAmount: string;
   }[]>([]);
   const [invoiceTotal, setInvoiceTotal] = useState<string>('0');
+  const [showPDFModal, setShowPDFModal] = useState(false);
+  const [isPDFModalAnimating, setIsPDFModalAnimating] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [pdfFileName, setPdfFileName] = useState<string>('');
+  const [pdfDownloadPath, setPdfDownloadPath] = useState<string>('');
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -349,6 +354,35 @@ export default function InvoiceDownloadsPage() {
       setShowXMLModal(false);
       setInvoiceLines([]);
       setInvoiceTotal('0');
+    }, 500);
+  };
+
+  const openPDFModal = (pdfPath: string | undefined) => {
+    if (!pdfPath) {
+      console.error('No PDF path provided');
+      return;
+    }
+
+    const viewUrl = `/api/view-pdf?path=${encodeURIComponent(pdfPath)}`;
+    const fileName = pdfPath.split('/').pop() || pdfPath.split('\\').pop() || 'documento.pdf';
+    
+    setPdfUrl(viewUrl);
+    setPdfFileName(fileName);
+    setPdfDownloadPath(pdfPath); // Guardar la ruta original para descarga
+    setShowPDFModal(true);
+    
+    setTimeout(() => {
+      setIsPDFModalAnimating(true);
+    }, 100);
+  };
+
+  const closePDFModal = () => {
+    setIsPDFModalAnimating(false);
+    setTimeout(() => {
+      setShowPDFModal(false);
+      setPdfUrl('');
+      setPdfFileName('');
+      setPdfDownloadPath('');
     }, 500);
   };
 
@@ -847,6 +881,16 @@ export default function InvoiceDownloadsPage() {
                               </td>
                               <td className="py-2 px-3">
                                 <div className="flex gap-1">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 w-7 p-0"
+                                    disabled={!invoice.downloadPath}
+                                    title={invoice.downloadPath ? "Ver PDF" : "Archivo no disponible"}
+                                    onClick={() => openPDFModal(invoice.downloadPath)}
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                  </Button>
                                   <Button 
                                     size="sm" 
                                     variant="outline" 
@@ -1373,6 +1417,61 @@ export default function InvoiceDownloadsPage() {
                 </div>
               </div>
             </div>
+        )}
+
+        {/* Modal de Visor de PDF */}
+        {showPDFModal && (
+          <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 transition-all duration-500 ease-in-out ${
+            isPDFModalAnimating ? 'opacity-100' : 'opacity-0'
+          }`}>
+            <div className={`bg-white rounded-lg w-full max-w-6xl h-[90vh] shadow-2xl transform transition-all duration-500 ease-in-out ${
+              isPDFModalAnimating ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+            }`}>
+              <div className="flex flex-col h-full">
+                {/* Header del modal */}
+                <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <Eye className="h-5 w-5 text-gray-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Visor de PDF
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadFile(pdfDownloadPath)}
+                      className="h-8 px-3"
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Descargar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={closePDFModal}
+                      className="h-8 w-8 p-0 hover:bg-gray-100"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Contenido del PDF */}
+                <div className="flex-1 p-4">
+                  <div className="w-full h-full border rounded-lg overflow-hidden">
+                    <iframe
+                      src={pdfUrl}
+                      className="w-full h-full"
+                      title={`PDF Viewer - ${pdfFileName}`}
+                      style={{ border: 'none' }}
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </MainLayout>
