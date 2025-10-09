@@ -6,22 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/date-picker';
 import { 
   ArrowRightLeft, 
-  Eye,
   FileText,
-  Calendar,
   Filter,
   Search,
   RefreshCw,
   CheckCircle,
   AlertCircle,
   Clock,
-  Key,
-  Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle,
+  Eye
 } from "lucide-react"
 
 interface InvoiceMigration {
@@ -35,48 +32,14 @@ interface InvoiceMigration {
   type: string;
   migrationPath?: string;
   migrationDate?: string;
+  downloadPath?: string;
 }
 
-interface ScrapingForm {
-  token: string; // This will contain the full URL
-  startDate: string;
-  endDate: string;
-}
-
-interface DatePickerState {
-  startDate: Date | undefined;
-  endDate: Date | undefined;
-}
-
-interface ScrapingResult {
-  success: boolean;
-  message: string;
-  migratedFiles?: MigratedFile[];
-  error?: string;
-}
-
-interface MigratedFile {
-  filename: string;
-  size: number;
-  migrationPath: string;
-  migrationDate: string;
-}
 
 export default function MigrateInvoicesPage() {
   const [migrations, setMigrations] = useState<InvoiceMigration[]>([]);
   const [isMigrating, setIsMigrating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [scrapingForm, setScrapingForm] = useState<ScrapingForm>({
-    token: '',
-    startDate: '',
-    endDate: ''
-  });
-  const [datePickerState, setDatePickerState] = useState<DatePickerState>({
-    startDate: undefined,
-    endDate: undefined
-  });
-  const [scrapingResult, setScrapingResult] = useState<ScrapingResult | null>(null);
-  const [isScraping, setIsScraping] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -90,7 +53,28 @@ export default function MigrateInvoicesPage() {
     senderNit: ''
   });
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
-  const [showScrapingModal, setShowScrapingModal] = useState(false);
+  const [showXMLModal, setShowXMLModal] = useState(false);
+  const [isXMLModalAnimating, setIsXMLModalAnimating] = useState(false);
+  const [xmlContent, setXmlContent] = useState<string>('');
+  const [xmlFileName, setXmlFileName] = useState<string>('');
+  const [supplierInfo, setSupplierInfo] = useState<{
+    name: string;
+    nit: string;
+    address: string;
+    city: string;
+    nameFound: boolean;
+    nitFound: boolean;
+    addressFound: boolean;
+    cityFound: boolean;
+  } | null>(null);
+  const [invoiceLines, setInvoiceLines] = useState<{
+    id: string;
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    totalAmount: string;
+  }[]>([]);
+  const [invoiceTotal, setInvoiceTotal] = useState<{ amount: string; found: boolean }>({ amount: '0', found: false });
 
   const loadDocuments = async (page: number = pagination.page, searchFilters = filters) => {
     try {
@@ -188,102 +172,6 @@ export default function MigrateInvoicesPage() {
     }, 2000);
   };
 
-  const handleStartDateChange = (date: Date | undefined) => {
-    setDatePickerState(prev => ({ ...prev, startDate: date }));
-    if (date) {
-      setScrapingForm(prev => ({
-        ...prev,
-        startDate: date.toISOString().split('T')[0]
-      }));
-    }
-  };
-
-  const handleEndDateChange = (date: Date | undefined) => {
-    setDatePickerState(prev => ({ ...prev, endDate: date }));
-    if (date) {
-      setScrapingForm(prev => ({
-        ...prev,
-        endDate: date.toISOString().split('T')[0]
-      }));
-    }
-  };
-
-  const handleScraping = async () => {
-    if (!scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate) {
-      setScrapingResult({
-        success: false,
-        message: 'Por favor, completa todos los campos requeridos'
-      });
-      return;
-    }
-
-    setIsScraping(true);
-    setScrapingResult(null);
-
-    try {
-      console.log('Sending scraping request:', {
-        token: scrapingForm.token ? `${scrapingForm.token.substring(0, 10)}...` : 'missing',
-        startDate: scrapingForm.startDate,
-        endDate: scrapingForm.endDate
-      });
-
-      const response = await fetch('/api/scraping', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(scrapingForm)
-      });
-
-      console.log('Response status:', response.status);
-      const result = await response.json();
-      console.log('Response result:', result);
-
-      if (result.success) {
-        setScrapingResult({
-          success: true,
-          message: result.message,
-          migratedFiles: result.data.downloadedFiles
-        });
-        
-        // Convert scraping results to invoice migrations format
-        const convertedMigrations: InvoiceMigration[] = result.data.downloadedFiles.map((file: MigratedFile, index: number) => ({
-          id: (index + 1).toString(),
-          documentNumber: file.filename.replace('.pdf', '').replace('.xml', ''),
-          date: new Date(file.migrationDate).toISOString().split('T')[0],
-          totalValue: 'N/A', // Amount not available from scraping
-          status: 'migrated' as const,
-          senderName: 'DIAN',
-          senderNit: 'N/A',
-          type: 'Documento'
-        }));
-        
-        setMigrations(convertedMigrations);
-        loadDocuments();
-        setShowScrapingModal(false); // Cerrar modal después del éxito
-      } else {
-        const errorMessage = result.message || result.error || 'Error desconocido';
-        setScrapingResult({
-          success: false,
-          message: errorMessage,
-          error: result.error
-        });
-      }
-    } catch (error) {
-      setScrapingResult({
-        success: false,
-        message: 'Error de conexión durante el scraping',
-        error: error instanceof Error ? error.message : 'Error desconocido'
-      });
-    } finally {
-      setIsScraping(false);
-    }
-  };
-
-  const handleOpenScrapingModal = () => {
-    setShowScrapingModal(true);
-    setScrapingResult(null);
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -358,9 +246,271 @@ export default function MigrateInvoicesPage() {
     // Aquí implementarías la lógica de migración
   };
 
-  const handlePreview = (invoice: InvoiceMigration) => {
-    console.log('Previewing invoice:', invoice);
-    // Aquí implementarías la lógica de previsualización
+  const openXMLModal = () => {
+    setShowXMLModal(true);
+
+    setTimeout(() => {
+      setIsXMLModalAnimating(true);
+    }, 100);
+  };
+
+  const closeXMLModal = () => {
+    setIsXMLModalAnimating(false);
+    setTimeout(() => {
+      setShowXMLModal(false);
+      setInvoiceLines([]);
+      setInvoiceTotal({ amount: '0', found: false });
+    }, 500);
+  };
+
+  const extractSupplierInfo = (xmlText: string) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      // Buscar la sección del proveedor (AccountingSupplierParty)
+      const supplierParty = xmlDoc.querySelector('cac\\:AccountingSupplierParty, AccountingSupplierParty');
+      
+      if (!supplierParty) {
+        return {
+          name: 'No encontrado',
+          nit: 'No encontrado',
+          address: 'No encontrado',
+          city: 'No encontrado',
+          nameFound: false,
+          nitFound: false,
+          addressFound: false,
+          cityFound: false
+        };
+      }
+      
+      // Buscar la sección PartyTaxScheme del proveedor
+      const partyTaxScheme = supplierParty.querySelector('cac\\:Party cac\\:PartyTaxScheme, Party PartyTaxScheme');
+      
+      if (!partyTaxScheme) {
+        return {
+          name: 'No encontrado',
+          nit: 'No encontrado',
+          address: 'No encontrado',
+          city: 'No encontrado',
+          nameFound: false,
+          nitFound: false,
+          addressFound: false,
+          cityFound: false
+        };
+      }
+      
+      // Extraer nombre del proveedor con lógica de fallback
+      // Primero intentar desde RegistrationName en PartyTaxScheme
+      let supplierNameElement = partyTaxScheme.querySelector('cbc\\:RegistrationName, RegistrationName');
+      let supplierName = supplierNameElement?.textContent?.trim();
+      let nameFound = !!supplierName;
+      
+      // Si no se encuentra, buscar en PartyName como fallback
+      if (!supplierName) {
+        supplierNameElement = supplierParty.querySelector('cac\\:Party cac\\:PartyName cbc\\:Name, Party PartyName Name');
+        supplierName = supplierNameElement?.textContent?.trim();
+        nameFound = !!supplierName;
+      }
+      
+      supplierName = supplierName || 'No encontrado';
+      
+      // Extraer NIT del proveedor con lógica de fallback
+      // Primero intentar desde CompanyID en PartyTaxScheme
+      let supplierNitElement = partyTaxScheme.querySelector('cbc\\:CompanyID, CompanyID');
+      let supplierNit = supplierNitElement?.textContent?.trim();
+      let nitFound = !!supplierNit;
+      
+      // Si no se encuentra, buscar en PartyIdentification como fallback
+      if (!supplierNit) {
+        supplierNitElement = supplierParty.querySelector('cac\\:Party cac\\:PartyIdentification cbc\\:ID, Party PartyIdentification ID');
+        supplierNit = supplierNitElement?.textContent?.trim();
+        nitFound = !!supplierNit;
+      }
+      
+      supplierNit = supplierNit || 'No encontrado';
+      
+      // Extraer dirección desde RegistrationAddress en PartyTaxScheme
+      const addressElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cac\\:AddressLine cbc\\:Line, RegistrationAddress AddressLine Line');
+      const address = addressElement?.textContent?.trim() || 'No encontrado';
+      const addressFound = !!addressElement?.textContent?.trim();
+      
+      // Extraer ciudad desde RegistrationAddress en PartyTaxScheme
+      const cityElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cbc\\:CityName, RegistrationAddress CityName');
+      const city = cityElement?.textContent?.trim() || 'No encontrado';
+      const cityFound = !!cityElement?.textContent?.trim();
+      
+      return {
+        name: supplierName,
+        nit: supplierNit,
+        address: address,
+        city: city,
+        nameFound,
+        nitFound,
+        addressFound,
+        cityFound
+      };
+    } catch (error) {
+      console.error('Error extracting supplier info:', error);
+      return {
+        name: 'Error al extraer',
+        nit: 'Error al extraer',
+        address: 'Error al extraer',
+        city: 'Error al extraer',
+        nameFound: false,
+        nitFound: false,
+        addressFound: false,
+        cityFound: false
+      };
+    }
+  };
+
+  const extractInvoiceLines = (xmlText: string) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      // Buscar todas las líneas de factura (InvoiceLine)
+      const invoiceLineElements = xmlDoc.querySelectorAll('cac\\:InvoiceLine, InvoiceLine');
+      
+      if (!invoiceLineElements || invoiceLineElements.length === 0) {
+        return [];
+      }
+      
+      const lines = Array.from(invoiceLineElements).map((line, index) => {
+        // Extraer ID de la línea
+        const idElement = line.querySelector('cbc\\:ID, ID');
+        const id = idElement?.textContent?.trim() || `${index + 1}`;
+        
+        // Extraer descripción del item
+        const descriptionElement = line.querySelector('cac\\:Item cbc\\:Description, Item Description');
+        const description = descriptionElement?.textContent?.trim() || 'No disponible';
+        
+        // Extraer cantidad
+        const quantityElement = line.querySelector('cbc\\:InvoicedQuantity, InvoicedQuantity');
+        const quantity = quantityElement?.textContent?.trim() || '0';
+        
+        // Extraer precio unitario
+        const priceElement = line.querySelector('cac\\:Price cbc\\:PriceAmount, Price PriceAmount');
+        const unitPrice = priceElement?.textContent?.trim() || '0';
+        
+        // Extraer monto total de la línea
+        const totalElement = line.querySelector('cbc\\:LineExtensionAmount, LineExtensionAmount');
+        const totalAmount = totalElement?.textContent?.trim() || '0';
+        
+        return {
+          id,
+          description,
+          quantity,
+          unitPrice,
+          totalAmount
+        };
+      });
+      
+      return lines;
+    } catch (error) {
+      console.error('Error extracting invoice lines:', error);
+      return [];
+    }
+  };
+
+  const extractInvoiceTotal = (xmlText: string) => {
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      
+      // Buscar la sección LegalMonetaryTotal
+      const legalMonetaryTotal = xmlDoc.querySelector('cac\\:LegalMonetaryTotal, LegalMonetaryTotal');
+      
+      if (!legalMonetaryTotal) {
+        return { amount: '0', found: false };
+      }
+      
+      // Extraer el PayableAmount (total a pagar)
+      const payableAmountElement = legalMonetaryTotal.querySelector('cbc\\:PayableAmount, PayableAmount');
+      const payableAmount = payableAmountElement?.textContent?.trim() || '0';
+      const found = !!payableAmountElement?.textContent?.trim() && payableAmount !== '0';
+      
+      return { amount: payableAmount, found };
+    } catch (error) {
+      console.error('Error extracting invoice total:', error);
+      return { amount: '0', found: false };
+    }
+  };
+
+  const handleViewXML = async (downloadPath: string | undefined) => {
+    if (!downloadPath) {
+      console.error('No download path provided');
+      return;
+    }
+
+    try {
+      // Convertir ruta PDF a ruta XML (igual que en invoice-downloads)
+      // Manejar diferentes formatos de rutas
+      let xmlPath = downloadPath;
+      
+      // Reemplazar /PDF/ por /XML/ y cambiar .pdf por .xml
+      if (xmlPath.includes('/PDF/')) {
+        xmlPath = xmlPath.replace('/PDF/', '/XML/');
+      } else if (xmlPath.includes('\\PDF\\')) {
+        xmlPath = xmlPath.replace('\\PDF\\', '\\XML\\');
+      }
+      
+      if (xmlPath.endsWith('.pdf')) {
+        xmlPath = xmlPath.replace('.pdf', '.xml');
+      }
+      
+      // Crear URL para obtener el contenido del XML
+      const xmlUrl = `/api/download-file?path=${encodeURIComponent(xmlPath)}`;
+      
+      // Obtener el contenido del XML
+      let response = await fetch(xmlUrl);
+      
+      if (!response.ok) {
+        console.error('First attempt failed - Response status:', response.status);
+        console.error('Response statusText:', response.statusText);
+        
+        // Intentar con una ruta alternativa basada en el nombre del archivo
+        const fileName = downloadPath.split('/').pop() || downloadPath.split('\\').pop();
+        if (fileName) {
+          const alternativeXmlPath = `downloads/scraping-results/XML/${fileName.replace('.pdf', '.xml')}`;
+          
+          const alternativeUrl = `/api/download-file?path=${encodeURIComponent(alternativeXmlPath)}`;
+          response = await fetch(alternativeUrl);
+          
+          if (response.ok) {
+            // Actualizar xmlPath para el resto de la función
+            xmlPath = alternativeXmlPath;
+          }
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Error loading XML: ${response.statusText}`);
+        }
+      }
+      
+      const xmlText = await response.text();
+      
+      // Extraer información del proveedor
+      const supplierData = extractSupplierInfo(xmlText);
+      
+      // Extraer líneas de factura
+      const invoiceLinesData = extractInvoiceLines(xmlText);
+      
+      // Extraer total de la operación
+      const invoiceTotalData = extractInvoiceTotal(xmlText);
+      
+      // Configurar el estado del modal
+      setXmlContent(xmlText);
+      setXmlFileName(xmlPath.split('/').pop() || 'documento.xml');
+      setSupplierInfo(supplierData);
+      setInvoiceLines(invoiceLinesData);
+      setInvoiceTotal(invoiceTotalData);
+      openXMLModal();
+    } catch (error) {
+      console.error('Error loading XML:', error);
+      // Aquí podrías agregar una notificación de error al usuario
+    }
   };
 
   return (
@@ -399,22 +549,14 @@ export default function MigrateInvoicesPage() {
                       {isMigrating ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Migrando...
+                          Migrando masivamente...
                         </>
                       ) : (
                         <>
                           <ArrowRightLeft className="h-4 w-4 mr-2" />
-                          Migrar Facturas
+                          Migrar masivamente
                         </>
                       )}
-                    </Button>
-                    <Button 
-                      onClick={handleOpenScrapingModal}
-                      disabled={isScraping}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Migrar información DIAN
                     </Button>
                   </div>
                 </div>
@@ -573,19 +715,19 @@ export default function MigrateInvoicesPage() {
                                     size="sm" 
                                     variant="outline" 
                                     className="h-7 w-7 p-0"
-                                    onClick={() => handleMigrate(invoice)}
-                                    title="Migrar factura"
+                                    onClick={() => handleViewXML(invoice.downloadPath)}
+                                    title="Ver XML"
                                   >
-                                    <ArrowRightLeft className="h-3 w-3" />
+                                    <Eye className="h-3 w-3" />
                                   </Button>
                                   <Button 
                                     size="sm" 
                                     variant="outline" 
                                     className="h-7 w-7 p-0"
-                                    onClick={() => handlePreview(invoice)}
-                                    title="Previsualizar factura"
+                                    onClick={() => handleMigrate(invoice)}
+                                    title="Migrar factura"
                                   >
-                                    <Eye className="h-3 w-3" />
+                                    <ArrowRightLeft className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </td>
@@ -667,129 +809,208 @@ export default function MigrateInvoicesPage() {
             </Card>
         </div>
 
-        {/* Modal de Configuración de Scraping */}
-        {showScrapingModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-            <div className="bg-white rounded-lg p-8 w-full max-w-[95vw] h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Migrar información DIAN
+        {/* Panel Lateral de Visualización de XML */}
+        {showXMLModal && (
+            <div className={`fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-50 transform transition-all duration-500 ease-in-out ${
+              isXMLModalAnimating ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+            }`}>
+              <div className="flex flex-col h-full">
+                {/* Header del panel */}
+                <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-gray-600" />
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Visualizador de XML
                 </h2>
+                      <p className="text-sm text-gray-500">{xmlFileName}</p>
+                    </div>
+                  </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowScrapingModal(false)}
-                  className="h-10 w-10 p-0 text-lg font-bold hover:bg-gray-100"
+                    onClick={closeXMLModal}
+                    className="h-8 w-8 p-0 hover:bg-gray-100"
                 >
                   ×
                 </Button>
               </div>
               
-              <div className="space-y-8">
-                <p className="text-lg text-gray-600">
-                  Configura los parámetros para migrar documentos desde la DIAN automáticamente
-                </p>
-                
-                {/* Three column layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Column 1: Date Range */}
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <Label htmlFor="startDate" className="text-base font-medium">Fecha de Inicio</Label>
-                      <DatePicker
-                        date={datePickerState.startDate}
-                        onDateChange={handleStartDateChange}
-                        placeholder="Selecciona fecha de inicio"
-                        disabled={isScraping}
-                      />
+                {/* Contenido del panel */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Información del Proveedor */}
+                  {supplierInfo && (
+                    <div className="border rounded-lg overflow-hidden bg-blue-50">
+                      <div className="bg-blue-100 px-3 py-2 border-b">
+                        <h3 className="text-sm font-medium text-blue-800">Información del Proveedor</h3>
                     </div>
-                    
-                    <div className="space-y-3">
-                      <Label htmlFor="endDate" className="text-base font-medium">Fecha de Fin</Label>
-                      <DatePicker
-                        date={datePickerState.endDate}
-                        onDateChange={handleEndDateChange}
-                        placeholder="Selecciona fecha de fin"
-                        disabled={isScraping}
-                      />
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16 mt-0.5">Nombre:</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            {!supplierInfo.nameFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />}
+                            <span className={`text-sm font-semibold ${supplierInfo.nameFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.name}
+                            </span>
                     </div>
                   </div>
-                  
-                  {/* Column 2: URL */}
-                  <div className="space-y-3">
-                    <Label htmlFor="token" className="text-base font-medium">URL de Autenticación DIAN</Label>
-                    <Input
-                      id="token"
-                      type="text"
-                      value={scrapingForm.token}
-                      onChange={(e) => setScrapingForm(prev => ({
-                        ...prev,
-                        token: e.target.value
-                      }))}
-                      placeholder="https://catalogo-vpfe.dian.gov.co/User/AuthToken?pk=10910094%7C70322015&rk=900698993&token=82dadb26-4c96-4da7-9967-ec4a219c40c5"
-                      disabled={isScraping}
-                      className="h-12 text-sm"
-                    />
-                    <p className="text-sm text-gray-500">
-                      Ingresa la URL completa de autenticación de la DIAN
-                    </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16">NIT:</span>
+                          <div className="flex items-center gap-1">
+                            {!supplierInfo.nitFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />}
+                            <span className={`text-sm ${supplierInfo.nitFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.nit}
+                            </span>
                   </div>
-                  
-                  {/* Column 3: Action Button */}
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={handleScraping}
-                      disabled={isScraping || !scrapingForm.token || !scrapingForm.startDate || !scrapingForm.endDate}
-                      className="w-full h-14 bg-green-600 hover:bg-green-700 text-base font-medium"
-                    >
-                      {isScraping ? (
-                        <>
-                          <RefreshCw className="h-5 w-5 mr-3 animate-spin" />
-                          Ejecutando Migración...
-                        </>
-                      ) : (
-                        <>
-                          <ArrowRightLeft className="h-5 w-5 mr-3" />
-                          Ejecutar Migración
-                        </>
-                      )}
-                    </Button>
                   </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16 mt-0.5">Dirección:</span>
+                          <div className="flex items-start gap-1 flex-1">
+                            {!supplierInfo.addressFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0 mt-0.5" />}
+                            <span className={`text-sm ${supplierInfo.addressFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.address}
+                            </span>
                 </div>
-                
-                {/* Scraping Result */}
-                {scrapingResult && (
-                  <div className="mt-6 p-6 rounded-lg border-2">
-                    <div className={`flex items-center gap-3 mb-4 ${
-                      scrapingResult.success ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      {scrapingResult.success ? (
-                        <CheckCircle className="h-6 w-6" />
-                      ) : (
-                        <AlertCircle className="h-6 w-6" />
-                      )}
-                      <span className="font-semibold text-base">
-                        {scrapingResult.message}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-700 w-16">Ciudad:</span>
+                          <div className="flex items-center gap-1">
+                            {!supplierInfo.cityFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />}
+                            <span className={`text-sm ${supplierInfo.cityFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.city}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Total de la Operación */}
+                  {invoiceTotal && invoiceTotal.amount !== '0' && (
+                    <div className="border rounded-lg overflow-hidden bg-orange-50">
+                      <div className="bg-orange-100 px-3 py-2 border-b">
+                        <h3 className="text-sm font-medium text-orange-800">Total de la Operación</h3>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-center">
+                          <div className={`flex items-center justify-center gap-2 text-xl font-bold mb-1 ${invoiceTotal.found ? 'text-orange-900' : 'text-red-600'}`}>
+                            {!invoiceTotal.found && <AlertTriangle className="h-5 w-5 text-red-600" />}
+                            <span>
+                              {invoiceTotal.found ? `$${parseFloat(invoiceTotal.amount).toLocaleString('es-CO')}` : 'No encontrado'}
                       </span>
                     </div>
-                    
-                    {scrapingResult.migratedFiles && scrapingResult.migratedFiles.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-base font-semibold text-gray-700 mb-3">
-                          Archivos migrados ({scrapingResult.migratedFiles.length}):
-                        </h4>
-                        <div className="space-y-2">
-                          {scrapingResult.migratedFiles.map((file, index) => (
-                            <div key={index} className="text-sm text-gray-600 flex items-center gap-3 p-2 bg-gray-50 rounded">
-                              <FileText className="h-4 w-4" />
-                              {file.filename} ({(file.size / 1024).toFixed(1)} KB)
+                          <div className="text-xs text-orange-700 font-medium">
+                            Total a Pagar (COP)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Líneas de Factura */}
+                  {invoiceLines && invoiceLines.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden bg-green-50">
+                      <div className="bg-green-100 px-3 py-2 border-b">
+                        <h3 className="text-sm font-medium text-green-800">Líneas de Factura ({invoiceLines.length} items)</h3>
                             </div>
-                          ))}
+                      <div className="overflow-x-auto">
+                        <table className="w-full bg-white text-xs">
+                          <thead className="bg-green-50">
+                            <tr>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-green-800 uppercase">
+                                #
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-green-800 uppercase">
+                                Descripción
+                              </th>
+                              <th className="px-2 py-2 text-right text-xs font-medium text-green-800 uppercase">
+                                Cant.
+                              </th>
+                              <th className="px-2 py-2 text-right text-xs font-medium text-green-800 uppercase">
+                                P. Unit.
+                              </th>
+                              <th className="px-2 py-2 text-right text-xs font-medium text-green-800 uppercase">
+                                Total
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {invoiceLines.map((line, index) => (
+                              <tr key={line.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="px-2 py-2 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    {line.id}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2">
+                                  <div className="text-xs font-medium text-gray-900 max-w-[160px] break-words">
+                                    {line.description}
+                                  </div>
+                                </td>
+                                <td className="px-2 py-2 text-right whitespace-nowrap">
+                                  <span className="text-xs text-gray-900">
+                                    {parseFloat(line.quantity || '0').toLocaleString('es-CO')}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2 text-right whitespace-nowrap">
+                                  <span className="text-xs text-gray-900">
+                                    ${parseFloat(line.unitPrice || '0').toLocaleString('es-CO')}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2 text-right whitespace-nowrap">
+                                  <span className="text-xs font-semibold text-gray-900">
+                                    ${parseFloat(line.totalAmount || '0').toLocaleString('es-CO')}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-green-50">
+                            <tr>
+                              <td colSpan={4} className="px-2 py-2 text-right text-xs font-medium text-green-800">
+                                Total:
+                              </td>
+                              <td className="px-2 py-2 text-right whitespace-nowrap">
+                                <span className="text-xs font-bold text-green-900">
+                                  ${invoiceLines.reduce((sum, line) => sum + parseFloat(line.totalAmount || '0'), 0).toLocaleString('es-CO')}
+                                </span>
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
                         </div>
                       </div>
                     )}
                   </div>
-                )}
+
+                {/* Footer con botones */}
+                <div className="border-t bg-gray-50 p-4 flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Migrar el XML
+                      const blob = new Blob([xmlContent], { type: 'application/xml' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = xmlFileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <ArrowRightLeft className="h-3 w-3 mr-1" />
+                    Migrar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={closeXMLModal}
+                    className="bg-gray-600 hover:bg-gray-700 text-white"
+                  >
+                    Cerrar
+                  </Button>
               </div>
             </div>
           </div>
