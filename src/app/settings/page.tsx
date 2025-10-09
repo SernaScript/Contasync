@@ -31,8 +31,11 @@ import {
   Building2,
   Package,
   BarChart3,
-  Target
+  Target,
+  Wifi,
+  Link
 } from "lucide-react"
+
 
 interface Role {
   id: string;
@@ -70,6 +73,15 @@ interface SiigoCredentials {
   apiUser: string;
   accessKey: string;
   applicationType: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface DianCredentials {
+  id?: string;
+  nit: string;
+  legalRepresentativeDocument: string;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -175,6 +187,17 @@ export default function ConfiguracionPage() {
     applicationType: 'production'
   });
   const [isEditingSiigo, setIsEditingSiigo] = useState(false);
+  
+  // Estados para DIAN
+  const [dianCredentials, setDianCredentials] = useState<DianCredentials>({
+    nit: '',
+    legalRepresentativeDocument: ''
+  });
+  const [dianForm, setDianForm] = useState<DianCredentials>({
+    nit: '',
+    legalRepresentativeDocument: ''
+  });
+  const [isEditingDian, setIsEditingDian] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [userForm, setUserForm] = useState({
@@ -189,6 +212,15 @@ export default function ConfiguracionPage() {
     details?: any;
   } | null>(null);
   const [hasSuccessfulConnection, setHasSuccessfulConnection] = useState(false);
+  
+  // Estados para prueba de conexión DIAN
+  const [isTestingDianConnection, setIsTestingDianConnection] = useState(false);
+  const [dianConnectionTestResult, setDianConnectionTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+  const [hasSuccessfulDianConnection, setHasSuccessfulDianConnection] = useState(false);
   const [accountingRules, setAccountingRules] = useState<AccountingRule[]>([]);
   const [isEditingRule, setIsEditingRule] = useState(false);
   const [editingRule, setEditingRule] = useState<AccountingRule | null>(null);
@@ -416,11 +448,76 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const loadDianCredentials = async (includeRealData = false) => {
+    try {
+      const url = includeRealData 
+        ? '/api/dian-credentials?includeRealData=true'
+        : '/api/dian-credentials';
+      
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success) {
+        if (result.data.credentials) {
+          if (includeRealData) {
+            // Para el formulario: usar valores reales (sin enmascarar)
+            setDianForm(result.data.credentials);
+          } else {
+            // Para visualización: enmascarar los datos sensibles
+            const displayCredentials = {
+              ...result.data.credentials,
+              nit: result.data.credentials.nit ? '••••••••••••••••••••••••••••••••' : '',
+              legalRepresentativeDocument: result.data.credentials.legalRepresentativeDocument ? '••••••••••••••••••••••••••••••••' : ''
+            };
+            setDianCredentials(displayCredentials);
+          }
+        } else {
+          // Si no hay credenciales, usar valores por defecto
+          const defaultCredentials = {
+            nit: '',
+            legalRepresentativeDocument: ''
+          };
+          if (includeRealData) {
+            setDianForm(defaultCredentials);
+          } else {
+            setDianCredentials(defaultCredentials);
+            setDianForm(defaultCredentials);
+          }
+        }
+      } else {
+        console.error('Error cargando credenciales DIAN:', result.error);
+        const defaultCredentials = {
+          nit: '',
+          legalRepresentativeDocument: ''
+        };
+        if (includeRealData) {
+          setDianForm(defaultCredentials);
+        } else {
+          setDianCredentials(defaultCredentials);
+          setDianForm(defaultCredentials);
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando credenciales DIAN:', error);
+      const defaultCredentials = {
+        nit: '',
+        legalRepresentativeDocument: ''
+      };
+      if (includeRealData) {
+        setDianForm(defaultCredentials);
+      } else {
+        setDianCredentials(defaultCredentials);
+        setDianForm(defaultCredentials);
+      }
+    }
+  };
+
   useEffect(() => {
     loadRoles();
     loadPermissions();
     loadUsers();
     loadSiigoCredentials();
+    loadDianCredentials();
     loadAccountingRules();
     loadSiigoTables();
   }, []);
@@ -504,6 +601,86 @@ export default function ConfiguracionPage() {
     setConnectionTestResult(null);
     // Recargar las credenciales para restaurar el estado
     await loadSiigoCredentials();
+  };
+
+  const handleDianSave = async () => {
+    try {
+      setLoading(true);
+      
+      // Validar que todos los campos estén llenos
+      if (!dianForm.nit || !dianForm.legalRepresentativeDocument) {
+        alert('El NIT y el documento del representante legal son requeridos');
+        setLoading(false);
+        return;
+      }
+
+      // Validar que se haya probado la conexión exitosamente
+      if (!hasSuccessfulDianConnection) {
+        alert('Debes probar la conexión exitosamente antes de guardar las credenciales');
+        setLoading(false);
+        return;
+      }
+
+      let response;
+      if (dianForm.id) {
+        // Actualizar credenciales existentes
+        response = await fetch('/api/dian-credentials', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: dianForm.id,
+            nit: dianForm.nit,
+            legalRepresentativeDocument: dianForm.legalRepresentativeDocument
+          }),
+        });
+      } else {
+        // Crear nuevas credenciales
+        response = await fetch('/api/dian-credentials', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            nit: dianForm.nit,
+            legalRepresentativeDocument: dianForm.legalRepresentativeDocument
+          }),
+        });
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Actualizar ambos estados después de guardar exitosamente
+        const displayCredentials = {
+          ...result.data.credentials,
+          nit: '••••••••••••••••••••••••••••••••',
+          legalRepresentativeDocument: '••••••••••••••••••••••••••••••••'
+        };
+        setDianCredentials(displayCredentials);
+        setDianForm(result.data.credentials);
+        setIsEditingDian(false);
+        console.log('Credenciales DIAN guardadas exitosamente');
+        // Aquí podrías mostrar un toast de éxito
+      } else {
+        console.error('Error guardando credenciales DIAN:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error guardando credenciales DIAN:', error);
+      alert('Error al guardar las credenciales');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDianCancel = async () => {
+    setIsEditingDian(false);
+    setHasSuccessfulDianConnection(false);
+    setDianConnectionTestResult(null);
+    // Recargar las credenciales para restaurar el estado
+    await loadDianCredentials();
   };
 
   const handleEditUser = (user: User) => {
@@ -644,6 +821,60 @@ export default function ConfiguracionPage() {
       setHasSuccessfulConnection(false);
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  const testDianConnection = async () => {
+    if (!dianForm.nit || !dianForm.legalRepresentativeDocument) {
+      setDianConnectionTestResult({
+        success: false,
+        message: 'Por favor, ingresa el NIT y el documento del representante legal antes de probar la conexión.'
+      });
+      setHasSuccessfulDianConnection(false);
+      return;
+    }
+
+    setIsTestingDianConnection(true);
+    setDianConnectionTestResult(null);
+    setHasSuccessfulDianConnection(false);
+
+    try {
+      const response = await fetch('/api/dian-credentials/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nit: dianForm.nit,
+          legalRepresentativeDocument: dianForm.legalRepresentativeDocument
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const translatedMessage = translateDianError(result.data.status, result.message);
+        setDianConnectionTestResult({
+          success: true,
+          message: translatedMessage
+        });
+        setHasSuccessfulDianConnection(true);
+      } else {
+        const translatedMessage = translateDianError(result.data?.status || 0, result.message);
+        setDianConnectionTestResult({
+          success: false,
+          message: translatedMessage
+        });
+        setHasSuccessfulDianConnection(false);
+      }
+    } catch (error) {
+      setDianConnectionTestResult({
+        success: false,
+        message: `Error de conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`
+      });
+      setHasSuccessfulDianConnection(false);
+    } finally {
+      setIsTestingDianConnection(false);
     }
   };
 
@@ -1198,6 +1429,26 @@ export default function ConfiguracionPage() {
       500: 'Error interno del servidor de SIIGO API',
       503: 'SIIGO API no está disponible temporalmente por mantenimiento o sobrecarga',
       504: 'Error de tiempo: SIIGO API no pudo responder debido a sobrecarga temporal'
+    };
+
+    return errorMessages[status] || `Error ${status}: ${message}`;
+  };
+
+  const translateDianError = (status: number, message: string) => {
+    const errorMessages: { [key: number]: string } = {
+      200: 'Conexión exitosa con DIAN',
+      201: 'Conexión exitosa con DIAN',
+      400: 'Error en la solicitud: Faltan parámetros obligatorios o hay un problema con los datos enviados',
+      401: 'Error de autenticación: Las credenciales proporcionadas no son válidas',
+      403: 'Error de permisos: El usuario no tiene permisos para acceder a los servicios de DIAN',
+      404: 'Error: El recurso solicitado no existe en DIAN',
+      408: 'Error de tiempo: DIAN no respondió dentro del tiempo esperado',
+      409: 'Error de conflicto: Los datos enviados causan un conflicto en el servidor',
+      415: 'Error de formato: Se envió un tipo de contenido no soportado',
+      429: 'Error de límite: Se han enviado demasiadas solicitudes a DIAN',
+      500: 'Error interno del servidor de DIAN',
+      503: 'DIAN no está disponible temporalmente por mantenimiento o sobrecarga',
+      504: 'Error de tiempo: DIAN no pudo responder debido a sobrecarga temporal'
     };
 
     return errorMessages[status] || `Error ${status}: ${message}`;
@@ -2354,179 +2605,129 @@ export default function ConfiguracionPage() {
           </TabsContent>
 
           {/* Tab de Integraciones */}
-          <TabsContent value="integrations" className="space-y-4">
-            {/* Integración SIIGO - Diseño Compacto */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Database className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">SIIGO ERP</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {siigoCredentials.id ? (
-                        <Badge className="bg-green-100 text-green-800 text-xs">
-                          <Check className="h-3 w-3 mr-1" />
-                          Conectado
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-orange-600 text-xs">
-                          No configurado
-                        </Badge>
-                      )}
-                      {siigoCredentials.id && (
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {siigoCredentials.applicationType}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {!isEditingSiigo && (
-                  <div className="flex gap-2">
-                    {siigoCredentials.id && (
-                      <Button 
-                        size="sm"
-                        onClick={testSiigoConnection}
-                        disabled={isTestingConnection}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {isTestingConnection ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                            Probando...
-                          </>
-                        ) : (
-                          <>
-                            <Database className="h-3 w-3 mr-1" />
-                            Probar Conexión
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    <Button 
-                      size="sm"
-                      onClick={async () => {
-                        await loadSiigoCredentials(true);
-                        setIsEditingSiigo(true);
-                        setHasSuccessfulConnection(false);
-                        setConnectionTestResult(null);
-                      }}
-                      className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
-                    >
-                      {siigoCredentials.id ? (
-                        <>
-                          <Edit className="h-3 w-3 mr-1" />
-                          Editar
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-3 w-3 mr-1" />
-                          Configurar
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </div>
+          <TabsContent value="integrations" className="space-y-6">
+            {/* Header de Integraciones */}
+            <div className="text-center py-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Integraciones del Sistema</h2>
+              <p className="text-gray-600">Conecta tu sistema con servicios externos para automatizar procesos</p>
+            </div>
 
-              {/* Formulario de edición compacto */}
-              {isEditingSiigo && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <Label htmlFor="apiUser" className="text-xs text-gray-600">Usuario API</Label>
-                      <Input
-                        id="apiUser"
-                        value={siigoForm.apiUser}
-                        onChange={(e) => setSiigoForm(prev => ({
-                          ...prev,
-                          apiUser: e.target.value
-                        }))}
-                        placeholder="Usuario API"
-                        className="h-8 text-sm"
+            {/* Grid de Integraciones */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Integración SIIGO */}
+              <Card className="relative overflow-hidden border-2 hover:border-blue-300 transition-all duration-300 hover:shadow-lg">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full -translate-y-16 translate-x-16"></div>
+                
+                <CardHeader className="relative z-10 pb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border-2 border-blue-100">
+                      <img 
+                        src="/Siigo_id70a6CpFG_1.jpeg" 
+                        alt="SIIGO" 
+                        className="w-full h-full object-cover"
                       />
                     </div>
-                    
-                    <div>
-                      <Label htmlFor="accessKey" className="text-xs text-gray-600">Access Key</Label>
-                      <Input
-                        id="accessKey"
-                        type="password"
-                        value={siigoForm.accessKey}
-                        onChange={(e) => setSiigoForm(prev => ({
-                          ...prev,
-                          accessKey: e.target.value
-                        }))}
-                        placeholder="Clave de acceso"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="applicationType" className="text-xs text-gray-600">Tipo</Label>
-                      <Input
-                        id="applicationType"
-                        value={siigoForm.applicationType}
-                        onChange={(e) => setSiigoForm(prev => ({
-                          ...prev,
-                          applicationType: e.target.value
-                        }))}
-                        placeholder="Producción"
-                        list="applicationTypes"
-                        className="h-8 text-sm"
-                      />
-                      <datalist id="applicationTypes">
-                        <option value="development">Desarrollo</option>
-                        <option value="staging">Pruebas</option>
-                        <option value="production">Producción</option>
-                      </datalist>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl text-gray-900">SIIGO ERP</CardTitle>
+                      <CardDescription className="text-gray-600 mt-1">
+                        Sistema de gestión empresarial para contabilidad y facturación
+                      </CardDescription>
                     </div>
                   </div>
-                  
-                  <div className="flex gap-2 mt-3">
-                    <Button 
-                      size="sm" 
-                      onClick={handleSiigoCancel} 
-                      variant="outline"
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Cancelar
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={testSiigoConnection}
-                      disabled={isTestingConnection || !siigoForm.apiUser || !siigoForm.accessKey}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isTestingConnection ? (
+                </CardHeader>
+
+                <CardContent className="relative z-10 space-y-4">
+                  {/* Estado de conexión */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      {siigoCredentials.id ? (
                         <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                          Probando...
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-green-700">Conectado</span>
                         </>
                       ) : (
                         <>
-                          <Database className="h-3 w-3 mr-1" />
-                          Probar Conexión
+                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          <span className="text-sm font-medium text-orange-700">No configurado</span>
                         </>
                       )}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      onClick={handleSiigoSave}
-                      disabled={!hasSuccessfulConnection}
-                      className={hasSuccessfulConnection ? "bg-green-600 hover:bg-green-700" : "bg-gray-400 cursor-not-allowed"}
-                    >
-                      <Save className="h-3 w-3 mr-1" />
-                      {hasSuccessfulConnection ? "Guardar" : "Probar conexión primero"}
-                    </Button>
+                    </div>
+                    {siigoCredentials.id && (
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {siigoCredentials.applicationType}
+                      </Badge>
+                    )}
                   </div>
-                  
+
+                  {/* Información de usuario */}
+                  {siigoCredentials.id && !isEditingSiigo && (
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <Key className="h-4 w-4" />
+                        <span>Usuario: <strong>{siigoCredentials.apiUser}</strong></span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Formulario de configuración */}
+                  {isEditingSiigo && (
+                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                      <h4 className="font-medium text-gray-900">Configurar Credenciales</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <Label htmlFor="apiUser" className="text-sm font-medium">Usuario API</Label>
+                          <Input
+                            id="apiUser"
+                            value={siigoForm.apiUser}
+                            onChange={(e) => setSiigoForm(prev => ({
+                              ...prev,
+                              apiUser: e.target.value
+                            }))}
+                            placeholder="Ingresa tu usuario API"
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="accessKey" className="text-sm font-medium">Access Key</Label>
+                          <Input
+                            id="accessKey"
+                            type="password"
+                            value={siigoForm.accessKey}
+                            onChange={(e) => setSiigoForm(prev => ({
+                              ...prev,
+                              accessKey: e.target.value
+                            }))}
+                            placeholder="Ingresa tu clave de acceso"
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="applicationType" className="text-sm font-medium">Tipo de Aplicación</Label>
+                          <select
+                            id="applicationType"
+                            value={siigoForm.applicationType}
+                            onChange={(e) => setSiigoForm(prev => ({
+                              ...prev,
+                              applicationType: e.target.value
+                            }))}
+                            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="development">Desarrollo</option>
+                            <option value="staging">Pruebas</option>
+                            <option value="production">Producción</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Resultado del test de conexión */}
                   {connectionTestResult && (
-                    <div className="mt-4 p-3 rounded-lg border">
+                    <div className={`p-3 rounded-lg border ${
+                      connectionTestResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    }`}>
                       <div className={`flex items-center gap-2 ${
                         connectionTestResult.success ? 'text-green-700' : 'text-red-700'
                       }`}>
@@ -2541,50 +2742,310 @@ export default function ConfiguracionPage() {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Información compacta cuando está configurado */}
-              {!isEditingSiigo && siigoCredentials.id && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>Usuario: <span className="font-medium text-gray-900">{siigoCredentials.apiUser}</span></span>
-                    <span className="text-xs text-gray-500">Credenciales seguras</span>
+                  {/* Botones de acción */}
+                  <div className="flex gap-2 pt-2">
+                    {!isEditingSiigo ? (
+                      <>
+                        {siigoCredentials.id && (
+                          <Button 
+                            size="sm"
+                            onClick={testSiigoConnection}
+                            disabled={isTestingConnection}
+                            className="bg-green-600 hover:bg-green-700 flex-1"
+                          >
+                            {isTestingConnection ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                Probando...
+                              </>
+                            ) : (
+                              <>
+                                <Wifi className="h-3 w-3 mr-2" />
+                                Probar Conexión
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button 
+                          size="sm"
+                          onClick={async () => {
+                            await loadSiigoCredentials(true);
+                            setIsEditingSiigo(true);
+                            setHasSuccessfulConnection(false);
+                            setConnectionTestResult(null);
+                          }}
+                          className={siigoCredentials.id ? "bg-blue-600 hover:bg-blue-700 flex-1" : "bg-green-600 hover:bg-green-700 flex-1"}
+                        >
+                          {siigoCredentials.id ? (
+                            <>
+                              <Edit className="h-3 w-3 mr-2" />
+                              Editar
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-3 w-3 mr-2" />
+                              Configurar
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          size="sm" 
+                          onClick={handleSiigoCancel} 
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <X className="h-3 w-3 mr-2" />
+                          Cancelar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={testSiigoConnection}
+                          disabled={isTestingConnection || !siigoForm.apiUser || !siigoForm.accessKey}
+                          className="bg-blue-600 hover:bg-blue-700 flex-1"
+                        >
+                          {isTestingConnection ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Probando...
+                            </>
+                          ) : (
+                            <>
+                              <Wifi className="h-3 w-3 mr-2" />
+                              Probar
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={handleSiigoSave}
+                          disabled={!hasSuccessfulConnection}
+                          className={hasSuccessfulConnection ? "bg-green-600 hover:bg-green-700 flex-1" : "bg-gray-400 cursor-not-allowed flex-1"}
+                        >
+                          <Save className="h-3 w-3 mr-2" />
+                          Guardar
+                        </Button>
+                      </>
+                    )}
                   </div>
-                  
-                  {/* Resultado del test de conexión cuando no está en modo edición */}
-                  {connectionTestResult && (
-                    <div className="mt-3 p-3 rounded-lg border">
+                </CardContent>
+              </Card>
+
+              {/* Integración DIAN */}
+              <Card className="relative overflow-hidden border-2 hover:border-blue-300 transition-all duration-300 hover:shadow-lg">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full -translate-y-16 translate-x-16"></div>
+                
+                <CardHeader className="relative z-10 pb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center overflow-hidden border-2 border-blue-100">
+                      <img 
+                        src="/Dian_(Colombia)_logo.svg" 
+                        alt="DIAN" 
+                        className="w-full h-full object-contain p-2"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl text-gray-900">DIAN</CardTitle>
+                      <CardDescription className="text-gray-600 mt-1">
+                        Dirección de Impuestos y Aduanas Nacionales de Colombia
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="relative z-10 space-y-4">
+                  {/* Estado de conexión */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      {dianCredentials.id ? (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-medium text-green-700">Conectado</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          <span className="text-sm font-medium text-orange-700">No configurado</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Información de usuario */}
+                  {dianCredentials.id && !isEditingDian && (
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <Key className="h-4 w-4" />
+                        <span>NIT: <strong>{dianCredentials.nit}</strong></span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Formulario de configuración */}
+                  {isEditingDian && (
+                    <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                      <h4 className="font-medium text-gray-900">Configurar Credenciales</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <Label htmlFor="dianNit" className="text-sm font-medium">NIT</Label>
+                          <Input
+                            id="dianNit"
+                            type="number"
+                            value={dianForm.nit}
+                            onChange={(e) => setDianForm(prev => ({
+                              ...prev,
+                              nit: e.target.value
+                            }))}
+                            placeholder="Ingresa el NIT de la empresa"
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="dianLegalDocument" className="text-sm font-medium">Documento Representante Legal</Label>
+                          <Input
+                            id="dianLegalDocument"
+                            type="number"
+                            value={dianForm.legalRepresentativeDocument}
+                            onChange={(e) => setDianForm(prev => ({
+                              ...prev,
+                              legalRepresentativeDocument: e.target.value
+                            }))}
+                            placeholder="Ingresa el documento del representante legal"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Resultado del test de conexión */}
+                  {dianConnectionTestResult && (
+                    <div className={`p-3 rounded-lg border ${
+                      dianConnectionTestResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    }`}>
                       <div className={`flex items-center gap-2 ${
-                        connectionTestResult.success ? 'text-green-700' : 'text-red-700'
+                        dianConnectionTestResult.success ? 'text-green-700' : 'text-red-700'
                       }`}>
-                        {connectionTestResult.success ? (
+                        {dianConnectionTestResult.success ? (
                           <Check className="h-4 w-4" />
                         ) : (
                           <X className="h-4 w-4" />
                         )}
                         <span className="font-medium text-sm">
-                          {connectionTestResult.message}
+                          {dianConnectionTestResult.message}
                         </span>
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-            </Card>
 
-            {/* Placeholder para futuras integraciones */}
-            <Card className="p-4 border-dashed border-gray-300">
-              <div className="flex items-center gap-3 text-gray-500">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Plus className="h-5 w-5" />
+                  {/* Botones de acción */}
+                  <div className="flex gap-2 pt-2">
+                    {!isEditingDian ? (
+                      <>
+                        {dianCredentials.id && (
+                          <Button 
+                            size="sm"
+                            onClick={testDianConnection}
+                            disabled={isTestingDianConnection}
+                            className="bg-green-600 hover:bg-green-700 flex-1"
+                          >
+                            {isTestingDianConnection ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                Probando...
+                              </>
+                            ) : (
+                              <>
+                                <Wifi className="h-3 w-3 mr-2" />
+                                Probar Conexión
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button 
+                          size="sm"
+                          onClick={async () => {
+                            await loadDianCredentials(true);
+                            setIsEditingDian(true);
+                            setHasSuccessfulDianConnection(false);
+                            setDianConnectionTestResult(null);
+                          }}
+                          className={dianCredentials.id ? "bg-blue-600 hover:bg-blue-700 flex-1" : "bg-green-600 hover:bg-green-700 flex-1"}
+                        >
+                          {dianCredentials.id ? (
+                            <>
+                              <Edit className="h-3 w-3 mr-2" />
+                              Editar
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-3 w-3 mr-2" />
+                              Configurar
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          size="sm" 
+                          onClick={handleDianCancel} 
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <X className="h-3 w-3 mr-2" />
+                          Cancelar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={testDianConnection}
+                          disabled={isTestingDianConnection || !dianForm.nit || !dianForm.legalRepresentativeDocument}
+                          className="bg-blue-600 hover:bg-blue-700 flex-1"
+                        >
+                          {isTestingDianConnection ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Probando...
+                            </>
+                          ) : (
+                            <>
+                              <Wifi className="h-3 w-3 mr-2" />
+                              Probar
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={handleDianSave}
+                          disabled={!hasSuccessfulDianConnection}
+                          className={hasSuccessfulDianConnection ? "bg-green-600 hover:bg-green-700 flex-1" : "bg-gray-400 cursor-not-allowed flex-1"}
+                        >
+                          <Save className="h-3 w-3 mr-2" />
+                          Guardar
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sección de futuras integraciones */}
+            <div className="text-center py-8">
+              <div className="inline-flex items-center gap-3 px-6 py-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Plus className="h-6 w-6 text-gray-400" />
                 </div>
-                <div>
-                  <h3 className="font-medium">Más integraciones</h3>
-                  <p className="text-sm">Próximamente más conectores disponibles</p>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-700">Más integraciones</h3>
+                  <p className="text-sm text-gray-500">Próximamente más conectores disponibles</p>
                 </div>
               </div>
-            </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
