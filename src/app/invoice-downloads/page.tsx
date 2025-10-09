@@ -1355,17 +1355,6 @@ export default function InvoiceDownloadsPage() {
                     </div>
                   )}
                   
-                  {/* Contenido XML colapsable */}
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-3 py-2 border-b">
-                      <h3 className="text-sm font-medium text-gray-700">Contenido XML</h3>
-                    </div>
-                    <div className="p-3 bg-gray-900 text-green-400 font-mono text-xs overflow-auto max-h-60">
-                      <pre className="whitespace-pre-wrap break-words">
-                        {xmlContent}
-                      </pre>
-                    </div>
-                  </div>
                 </div>
 
                 {/* Footer con botones */}
