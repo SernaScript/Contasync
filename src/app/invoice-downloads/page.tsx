@@ -709,6 +709,18 @@ export default function InvoiceDownloadsPage() {
     return `${day}/${month}/${year}`;
   };
 
+  const normalizeText = (text: string) => {
+    if (!text) return '';
+    
+    return text
+      .toLowerCase() // Convertir a minúsculas
+      .normalize('NFD') // Normalizar caracteres con acentos
+      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+      .replace(/ñ/g, 'n') // Reemplazar ñ por n
+      .replace(/[^a-z0-9\s]/g, '') // Remover caracteres especiales excepto espacios
+      .trim(); // Remover espacios al inicio y final
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -822,14 +834,14 @@ export default function InvoiceDownloadsPage() {
                       <div className="bg-gray-50 p-4 rounded-lg border">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <Label htmlFor="filter-document-number" className="text-sm font-medium">
-                              Nº Documento
+                            <Label htmlFor="filter-sender-nit" className="text-sm font-medium">
+                              NIT
                             </Label>
                             <Input
-                              id="filter-document-number"
-                              value={filters.documentNumber}
-                              onChange={(e) => handleFilterChange('documentNumber', e.target.value)}
-                              placeholder="Buscar por número de documento"
+                              id="filter-sender-nit"
+                              value={filters.senderNit}
+                              onChange={(e) => handleFilterChange('senderNit', e.target.value)}
+                              placeholder="Buscar por NIT"
                               className="mt-1"
                             />
                           </div>
@@ -848,14 +860,14 @@ export default function InvoiceDownloadsPage() {
                           </div>
                           
                           <div>
-                            <Label htmlFor="filter-sender-nit" className="text-sm font-medium">
-                              NIT
+                            <Label htmlFor="filter-document-number" className="text-sm font-medium">
+                              Nº Documento
                             </Label>
                             <Input
-                              id="filter-sender-nit"
-                              value={filters.senderNit}
-                              onChange={(e) => handleFilterChange('senderNit', e.target.value)}
-                              placeholder="Buscar por NIT"
+                              id="filter-document-number"
+                              value={filters.documentNumber}
+                              onChange={(e) => handleFilterChange('documentNumber', e.target.value)}
+                              placeholder="Buscar por número de documento"
                               className="mt-1"
                             />
                           </div>

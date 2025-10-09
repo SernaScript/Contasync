@@ -12,32 +12,62 @@ export async function GET(request: NextRequest) {
     const senderName = searchParams.get('senderName');
     const senderNit = searchParams.get('senderNit');
 
-    const whereConditions: any = {
+    const baseConditions: any = {
       documentType: {
         not: 'Application response'
       }
     };
+
+    const andConditions: any[] = [baseConditions];
     
     if (documentNumber) {
-      whereConditions.documentNumber = {
-        contains: documentNumber,
-        mode: 'insensitive'
-      };
+      andConditions.push({
+        documentNumber: {
+          contains: documentNumber,
+          mode: 'insensitive'
+        }
+      });
     }
     
     if (senderName) {
-      whereConditions.senderName = {
-        contains: senderName,
-        mode: 'insensitive'
-      };
+      // Normalizar el texto de búsqueda para manejar n/ñ y acentos
+      const normalizedSearch = senderName
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ñ/g, 'n');
+      
+      // Crear condiciones OR para búsqueda normal y normalizada
+      andConditions.push({
+        OR: [
+          {
+            senderName: {
+              contains: senderName,
+              mode: 'insensitive'
+            }
+          },
+          {
+            senderName: {
+              contains: normalizedSearch,
+              mode: 'insensitive'
+            }
+          }
+        ]
+      });
     }
     
     if (senderNit) {
-      whereConditions.senderNit = {
-        contains: senderNit,
-        mode: 'insensitive'
-      };
+      andConditions.push({
+        senderNit: {
+          contains: senderNit,
+          mode: 'insensitive'
+        }
+      });
     }
+
+    const whereConditions = {
+      AND: andConditions
+    };
 
     const documents = await (prisma as any).scrapedDocument.findMany({
       where: whereConditions,
