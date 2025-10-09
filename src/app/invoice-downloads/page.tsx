@@ -26,7 +26,8 @@ import {
   Mail,
   MousePointer,
   Copy,
-  Info
+  Info,
+  AlertTriangle
 } from "lucide-react"
 
 interface InvoiceDownload {
@@ -106,6 +107,10 @@ export default function InvoiceDownloadsPage() {
     nit: string;
     address: string;
     city: string;
+    nameFound: boolean;
+    nitFound: boolean;
+    addressFound: boolean;
+    cityFound: boolean;
   } | null>(null);
   const [invoiceLines, setInvoiceLines] = useState<{
     id: string;
@@ -114,7 +119,7 @@ export default function InvoiceDownloadsPage() {
     unitPrice: string;
     totalAmount: string;
   }[]>([]);
-  const [invoiceTotal, setInvoiceTotal] = useState<string>('0');
+  const [invoiceTotal, setInvoiceTotal] = useState<{ amount: string; found: boolean }>({ amount: '0', found: false });
   const [showPDFModal, setShowPDFModal] = useState(false);
   const [isPDFModalAnimating, setIsPDFModalAnimating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string>('');
@@ -353,7 +358,7 @@ export default function InvoiceDownloadsPage() {
     setTimeout(() => {
       setShowXMLModal(false);
       setInvoiceLines([]);
-      setInvoiceTotal('0');
+      setInvoiceTotal({ amount: '0', found: false });
     }, 500);
   };
 
@@ -399,7 +404,11 @@ export default function InvoiceDownloadsPage() {
           name: 'No encontrado',
           nit: 'No encontrado',
           address: 'No encontrado',
-          city: 'No encontrado'
+          city: 'No encontrado',
+          nameFound: false,
+          nitFound: false,
+          addressFound: false,
+          cityFound: false
         };
       }
       
@@ -411,7 +420,11 @@ export default function InvoiceDownloadsPage() {
           name: 'No encontrado',
           nit: 'No encontrado',
           address: 'No encontrado',
-          city: 'No encontrado'
+          city: 'No encontrado',
+          nameFound: false,
+          nitFound: false,
+          addressFound: false,
+          cityFound: false
         };
       }
       
@@ -419,11 +432,13 @@ export default function InvoiceDownloadsPage() {
       // Primero intentar desde RegistrationName en PartyTaxScheme
       let supplierNameElement = partyTaxScheme.querySelector('cbc\\:RegistrationName, RegistrationName');
       let supplierName = supplierNameElement?.textContent?.trim();
+      let nameFound = !!supplierName;
       
       // Si no se encuentra, buscar en PartyName como fallback
       if (!supplierName) {
         supplierNameElement = supplierParty.querySelector('cac\\:Party cac\\:PartyName cbc\\:Name, Party PartyName Name');
         supplierName = supplierNameElement?.textContent?.trim();
+        nameFound = !!supplierName;
       }
       
       supplierName = supplierName || 'No encontrado';
@@ -432,11 +447,13 @@ export default function InvoiceDownloadsPage() {
       // Primero intentar desde CompanyID en PartyTaxScheme
       let supplierNitElement = partyTaxScheme.querySelector('cbc\\:CompanyID, CompanyID');
       let supplierNit = supplierNitElement?.textContent?.trim();
+      let nitFound = !!supplierNit;
       
       // Si no se encuentra, buscar en PartyIdentification como fallback
       if (!supplierNit) {
         supplierNitElement = supplierParty.querySelector('cac\\:Party cac\\:PartyIdentification cbc\\:ID, Party PartyIdentification ID');
         supplierNit = supplierNitElement?.textContent?.trim();
+        nitFound = !!supplierNit;
       }
       
       supplierNit = supplierNit || 'No encontrado';
@@ -444,16 +461,22 @@ export default function InvoiceDownloadsPage() {
       // Extraer dirección desde RegistrationAddress en PartyTaxScheme
       const addressElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cac\\:AddressLine cbc\\:Line, RegistrationAddress AddressLine Line');
       const address = addressElement?.textContent?.trim() || 'No encontrado';
+      const addressFound = !!addressElement?.textContent?.trim();
       
       // Extraer ciudad desde RegistrationAddress en PartyTaxScheme
       const cityElement = partyTaxScheme.querySelector('cac\\:RegistrationAddress cbc\\:CityName, RegistrationAddress CityName');
       const city = cityElement?.textContent?.trim() || 'No encontrado';
+      const cityFound = !!cityElement?.textContent?.trim();
       
       return {
         name: supplierName,
         nit: supplierNit,
         address: address,
-        city: city
+        city: city,
+        nameFound,
+        nitFound,
+        addressFound,
+        cityFound
       };
     } catch (error) {
       console.error('Error extracting supplier info:', error);
@@ -461,7 +484,11 @@ export default function InvoiceDownloadsPage() {
         name: 'Error al extraer',
         nit: 'Error al extraer',
         address: 'Error al extraer',
-        city: 'Error al extraer'
+        city: 'Error al extraer',
+        nameFound: false,
+        nitFound: false,
+        addressFound: false,
+        cityFound: false
       };
     }
   };
@@ -524,17 +551,18 @@ export default function InvoiceDownloadsPage() {
       const legalMonetaryTotal = xmlDoc.querySelector('cac\\:LegalMonetaryTotal, LegalMonetaryTotal');
       
       if (!legalMonetaryTotal) {
-        return '0';
+        return { amount: '0', found: false };
       }
       
       // Extraer el PayableAmount (total a pagar)
       const payableAmountElement = legalMonetaryTotal.querySelector('cbc\\:PayableAmount, PayableAmount');
       const payableAmount = payableAmountElement?.textContent?.trim() || '0';
+      const found = !!payableAmountElement?.textContent?.trim() && payableAmount !== '0';
       
-      return payableAmount;
+      return { amount: payableAmount, found };
     } catch (error) {
       console.error('Error extracting invoice total:', error);
-      return '0';
+      return { amount: '0', found: false };
     }
   };
 
@@ -1243,34 +1271,57 @@ export default function InvoiceDownloadsPage() {
                       <div className="p-3 space-y-2">
                         <div className="flex items-start gap-2">
                           <span className="text-xs font-medium text-gray-700 w-16 mt-0.5">Nombre:</span>
-                          <span className="text-sm text-gray-900 font-semibold flex-1">{supplierInfo.name}</span>
+                          <div className="flex items-center gap-1 flex-1">
+                            {!supplierInfo.nameFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />}
+                            <span className={`text-sm font-semibold ${supplierInfo.nameFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.name}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-gray-700 w-16">NIT:</span>
-                          <span className="text-sm text-gray-900">{supplierInfo.nit}</span>
+                          <div className="flex items-center gap-1">
+                            {!supplierInfo.nitFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />}
+                            <span className={`text-sm ${supplierInfo.nitFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.nit}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-start gap-2">
                           <span className="text-xs font-medium text-gray-700 w-16 mt-0.5">Dirección:</span>
-                          <span className="text-sm text-gray-900 flex-1">{supplierInfo.address}</span>
+                          <div className="flex items-start gap-1 flex-1">
+                            {!supplierInfo.addressFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0 mt-0.5" />}
+                            <span className={`text-sm ${supplierInfo.addressFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.address}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-gray-700 w-16">Ciudad:</span>
-                          <span className="text-sm text-gray-900">{supplierInfo.city}</span>
+                          <div className="flex items-center gap-1">
+                            {!supplierInfo.cityFound && <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />}
+                            <span className={`text-sm ${supplierInfo.cityFound ? 'text-gray-900' : 'text-red-600'}`}>
+                              {supplierInfo.city}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {/* Total de la Operación */}
-                  {invoiceTotal && invoiceTotal !== '0' && (
+                  {invoiceTotal && invoiceTotal.amount !== '0' && (
                     <div className="border rounded-lg overflow-hidden bg-orange-50">
                       <div className="bg-orange-100 px-3 py-2 border-b">
                         <h3 className="text-sm font-medium text-orange-800">Total de la Operación</h3>
                       </div>
                       <div className="p-4">
                         <div className="text-center">
-                          <div className="text-xl font-bold text-orange-900 mb-1">
-                            ${parseFloat(invoiceTotal).toLocaleString('es-CO')}
+                          <div className={`flex items-center justify-center gap-2 text-xl font-bold mb-1 ${invoiceTotal.found ? 'text-orange-900' : 'text-red-600'}`}>
+                            {!invoiceTotal.found && <AlertTriangle className="h-5 w-5 text-red-600" />}
+                            <span>
+                              {invoiceTotal.found ? `$${parseFloat(invoiceTotal.amount).toLocaleString('es-CO')}` : 'No encontrado'}
+                            </span>
                           </div>
                           <div className="text-xs text-orange-700 font-medium">
                             Total a Pagar (COP)
