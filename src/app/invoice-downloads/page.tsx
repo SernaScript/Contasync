@@ -861,7 +861,7 @@ export default function InvoiceDownloadsPage() {
                           
                           <div>
                             <Label htmlFor="filter-document-number" className="text-sm font-medium">
-                              Nº Documento
+                              Número de factura
                             </Label>
                             <Input
                               id="filter-document-number"
