@@ -112,17 +112,15 @@ export async function POST(request: NextRequest) {
     const allCustomers = await getAllCustomers();
     console.log(`Total de customers obtenidos: ${allCustomers.length}`);
 
-    // Filtrar solo los proveedores (type: "Supplier")
-    const suppliers = allCustomers.filter((thirdParty: any) => 
-      thirdParty.type === 'Supplier'
-    );
+    // No filtrar por tipo - incluir todos los terceros
+    const allThirdParties = allCustomers;
 
-    console.log(`Se encontraron ${suppliers.length} proveedores en Siigo`);
+    console.log(`Se encontraron ${allThirdParties.length} terceros en Siigo (todos los tipos)`);
 
-    if (suppliers.length === 0) {
+    if (allThirdParties.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'No se encontraron proveedores para migrar',
+        message: 'No se encontraron terceros para migrar',
         data: {
           totalFound: 0,
           migrated: 0,
@@ -132,48 +130,48 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Procesar y migrar cada proveedor
+    // Procesar y migrar cada tercero
     let migratedCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
 
-    console.log(`Iniciando procesamiento de ${suppliers.length} proveedores...`);
+    console.log(`Iniciando procesamiento de ${allThirdParties.length} terceros...`);
 
-    for (let i = 0; i < suppliers.length; i++) {
-      const supplier = suppliers[i];
-      console.log(`Procesando proveedor ${i + 1}/${suppliers.length}: ${supplier.id}`);
+    for (let i = 0; i < allThirdParties.length; i++) {
+      const thirdParty = allThirdParties[i];
+      console.log(`Procesando tercero ${i + 1}/${allThirdParties.length}: ${thirdParty.id}`);
       
       try {
         // Verificar si ya existe un proveedor con este siigoId
         const existingProvider = await (prisma as any).provider.findUnique({
-          where: { siigoId: supplier.id }
+          where: { siigoId: thirdParty.id }
         });
 
         if (existingProvider) {
-          console.log(`Proveedor ${supplier.id} ya existe, saltando...`);
+          console.log(`Tercero ${thirdParty.id} ya existe, saltando...`);
           skippedCount++;
           continue;
         }
 
         // Mapear datos de Siigo a nuestro modelo
         const providerData = {
-          siigoId: supplier.id,
-          type: supplier.type || 'Customer',
-          personType: supplier.person_type || 'Person',
-          idTypeCode: supplier.id_type?.code || '',
-          idTypeName: supplier.id_type?.name || '',
-          identification: supplier.identification || '',
-          name: Array.isArray(supplier.name) 
-            ? supplier.name.join(' ') 
-            : supplier.name || '',
-          active: supplier.active !== false, // Default true si no está definido
+          siigoId: thirdParty.id,
+          type: thirdParty.type || 'Customer',
+          personType: thirdParty.person_type || 'Person',
+          idTypeCode: thirdParty.id_type?.code || '',
+          idTypeName: thirdParty.id_type?.name || '',
+          identification: thirdParty.identification || '',
+          name: Array.isArray(thirdParty.name) 
+            ? thirdParty.name.join(' ') 
+            : thirdParty.name || '',
+          active: thirdParty.active !== false, // Default true si no está definido
           isMigrated: true,
           migrationDate: new Date(),
           createdBy: 'system' // Podrías obtener esto del contexto de autenticación
         };
 
-        console.log(`Datos mapeados para ${supplier.id}:`, {
+        console.log(`Datos mapeados para ${thirdParty.id}:`, {
           siigoId: providerData.siigoId,
           type: providerData.type,
           identification: providerData.identification,
@@ -182,7 +180,7 @@ export async function POST(request: NextRequest) {
 
         // Validar datos requeridos
         if (!providerData.siigoId || !providerData.identification || !providerData.name) {
-          console.warn(`Proveedor ${supplier.id} tiene datos incompletos:`, {
+          console.warn(`Tercero ${thirdParty.id} tiene datos incompletos:`, {
             siigoId: providerData.siigoId,
             identification: providerData.identification,
             name: providerData.name
@@ -196,14 +194,14 @@ export async function POST(request: NextRequest) {
           data: providerData
         });
 
-        console.log(`✅ Proveedor migrado exitosamente: ${providerData.name} (${providerData.identification}) - ID: ${createdProvider.id}`);
+        console.log(`✅ Tercero migrado exitosamente: ${providerData.name} (${providerData.identification}) - ID: ${createdProvider.id}`);
         migratedCount++;
 
       } catch (error) {
-        console.error(`❌ Error migrando proveedor ${supplier.id}:`, error);
-        console.error(`Datos del proveedor:`, supplier);
+        console.error(`❌ Error migrando tercero ${thirdParty.id}:`, error);
+        console.error(`Datos del tercero:`, thirdParty);
         errorCount++;
-        errors.push(`Error con proveedor ${supplier.id}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        errors.push(`Error con tercero ${thirdParty.id}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
       }
     }
 
@@ -211,9 +209,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Migración completada: ${migratedCount} proveedores migrados exitosamente`,
+      message: `Migración completada: ${migratedCount} terceros migrados exitosamente`,
       data: {
-        totalFound: suppliers.length,
+        totalFound: allThirdParties.length,
         migrated: migratedCount,
         skipped: skippedCount,
         errors: errorCount,
@@ -222,7 +220,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error en migración de proveedores:', error);
+    console.error('Error en migración de terceros:', error);
     
     return NextResponse.json({
       success: false,
