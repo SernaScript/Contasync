@@ -2548,10 +2548,7 @@ export default function ConfiguracionPage() {
                                   )}
                                 </div>
                                 <p className="text-gray-600 text-xs mb-2 line-clamp-2">{table.description}</p>
-                                <div className="flex items-center justify-between">
-                                  <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                                    {table.tableType}
-                                  </Badge>
+                                <div className="flex items-center justify-end">
                                   <Button
                                     onClick={() => handleMigratePredefinedTable(table)}
                                     disabled={isAlreadyMigrated}
