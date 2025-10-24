@@ -1,15 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
 import { 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCw, 
-  Download, 
   FileText,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw
 } from 'lucide-react';
 
@@ -72,68 +65,28 @@ export const SimplePDFViewer: React.FC<SimplePDFViewerProps> = ({ pdfUrl, fileNa
           <FileText className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">Error al cargar PDF</h3>
           <p className="text-sm text-gray-500 mb-4">{error}</p>
-          <div className="flex gap-2 justify-center">
-            <Button
-              onClick={() => {
-                setError(null);
-                setIsLoading(true);
-                if (iframeRef.current) {
-                  iframeRef.current.src = pdfUrl;
-                }
-              }}
-              variant="outline"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reintentar
-            </Button>
-            <Button
-              onClick={() => window.open(pdfUrl, '_blank')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Abrir en Nueva Pestaña
-            </Button>
-          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setIsLoading(true);
+              if (iframeRef.current) {
+                iframeRef.current.src = pdfUrl;
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4 mr-2 inline" />
+            Reintentar
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Barra de herramientas */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">
-            {fileName}
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open(pdfUrl, '_blank')}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Nueva Pestaña
-          </Button>
-          
-          {onDownload && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDownload}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Descargar
-            </Button>
-          )}
-        </div>
-      </div>
-      
-      {/* Contenedor del PDF */}
-      <div className="flex-1 relative">
+    <div className="h-full bg-white">
+      {/* Contenedor del PDF - Sin barra de herramientas */}
+      <div className="h-full relative">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
             <div className="text-center">
