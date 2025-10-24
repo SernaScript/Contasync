@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       'Partner-Id': headers['Partner-Id']
     });
 
-    // Realizar petición a la API de Siigo
-    const siigoResponse = await fetch('https://api.siigo.com/v1/customers', {
+    // Realizar petición a la API de Siigo (solo primera página para consulta)
+    const siigoResponse = await fetch('https://api.siigo.com/v1/customers?page=1', {
       method: 'GET',
       headers
     });
@@ -45,7 +45,16 @@ export async function GET(request: NextRequest) {
     console.log('Respuesta de Siigo:', {
       status: siigoResponse.status,
       statusText: siigoResponse.statusText,
-      dataLength: Array.isArray(responseData) ? responseData.length : 'No es array'
+      dataType: Array.isArray(responseData) ? 'Array' : typeof responseData,
+      dataLength: Array.isArray(responseData) ? responseData.length : 'No es array',
+      hasResults: responseData.results ? 'Sí' : 'No',
+      resultsLength: responseData.results ? responseData.results.length : 'N/A',
+      pagination: {
+        current_page: responseData.current_page,
+        total_pages: responseData.total_pages,
+        total_items: responseData.total_items,
+        has_more: responseData.has_more
+      }
     });
 
     if (!siigoResponse.ok) {
@@ -56,16 +65,19 @@ export async function GET(request: NextRequest) {
       }, { status: siigoResponse.status });
     }
 
-    // Filtrar solo los proveedores (customers con tipo supplier)
-    const suppliers = Array.isArray(responseData) 
-      ? responseData.filter((customer: any) => 
-          customer.type === 'supplier' || 
-          customer.customer_type === 'supplier' ||
-          customer.is_supplier === true
-        )
-      : [];
+    // Obtener los datos (manejar tanto array directo como estructura paginada)
+    const customers = Array.isArray(responseData) 
+      ? responseData 
+      : (responseData.results && Array.isArray(responseData.results)) 
+        ? responseData.results 
+        : [];
 
-    console.log(`Se encontraron ${suppliers.length} proveedores en Siigo`);
+    // Filtrar solo los proveedores (type: "Supplier")
+    const suppliers = customers.filter((customer: any) => 
+      customer.type === 'Supplier'
+    );
+
+    console.log(`Se encontraron ${suppliers.length} proveedores en la primera página de Siigo`);
 
     return NextResponse.json({
       success: true,
