@@ -101,10 +101,10 @@ const ROLE_PERMISSIONS_MAPPING = {
 }
 
 async function main() {
-  console.log('🌱 Starting database seeding...')
+  console.log('Starting database seeding...')
 
   // Create permissions first
-  console.log('📋 Creating permissions...')
+  console.log('Creating permissions...')
   const createdPermissions = new Map<string, string>()
   
   for (const permission of PERMISSIONS_DATA) {
@@ -115,11 +115,11 @@ async function main() {
       create: permission
     })
     createdPermissions.set(permission.name, created.id)
-    console.log(`  ✅ Permission: ${permission.name}`)
+    console.log(`  Permission: ${permission.name}`)
   }
 
   // Create roles
-  console.log('👥 Creating roles...')
+  console.log('Creating roles...')
   const createdRoles = new Map<RoleName, string>()
   
   for (const role of ROLES_DATA) {
@@ -129,11 +129,11 @@ async function main() {
       create: role
     })
     createdRoles.set(role.name, created.id)
-    console.log(`  ✅ Role: ${role.displayName}`)
+    console.log(`  Role: ${role.displayName}`)
   }
 
   // Create role-permission mappings
-  console.log('🔗 Creating role-permission mappings...')
+  console.log('Creating role-permission mappings...')
   
   for (const [roleName, permissionNames] of Object.entries(ROLE_PERMISSIONS_MAPPING)) {
     const roleId = createdRoles.get(roleName as RoleName)
@@ -156,11 +156,11 @@ async function main() {
         }
       })
     }
-    console.log(`  ✅ Mapped ${permissionNames.length} permissions to ${roleName}`)
+    console.log(`  Mapped ${permissionNames.length} permissions to ${roleName}`)
   }
 
   // Create test users
-  console.log('👤 Creating test users...')
+  console.log('Creating test users...')
   
   for (const userData of TEST_USERS) {
     const roleId = createdRoles.get(userData.role)
@@ -184,22 +184,22 @@ async function main() {
         isActive: true
       }
     })
-    console.log(`  ✅ User: ${userData.name} (${userData.email})`)
+    console.log(`  User: ${userData.name} (${userData.email})`)
   }
 
-  console.log('\n🎉 Database seeding completed!')
-  console.log('\n📧 Test User Credentials:')
+  console.log('\nDatabase seeding completed!')
+  console.log('\nTest User Credentials:')
   console.log('=' .repeat(50))
   
   for (const user of TEST_USERS) {
     console.log(`${user.name}:`)
-    console.log(`  📧 Email: ${user.email}`)
-    console.log(`  🔑 Password: ${user.password}`)
-    console.log(`  👤 Role: ${user.role}`)
+    console.log(`  Email: ${user.email}`)
+    console.log(`  Password: ${user.password}`)
+    console.log(`  Role: ${user.role}`)
     console.log('')
   }
   
-  console.log('⚠️  IMPORTANT: Change these passwords in production!')
+  console.log('IMPORTANT: Change these passwords in production!')
 }
 
 main()
@@ -207,7 +207,7 @@ main()
     await prisma.$disconnect()
   })
   .catch(async (e) => {
-    console.error('❌ Seeding failed:', e)
+    console.error('Seeding failed:', e)
     await prisma.$disconnect()
     process.exit(1)
   })

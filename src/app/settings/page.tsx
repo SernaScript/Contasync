@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from "@/components/MainLayout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AccessTokensManager } from "@/components/AccessTokensManager"
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -3068,6 +3069,9 @@ export default function ConfiguracionPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Gestión de Tokens de Acceso */}
+            <AccessTokensManager />
 
             {/* Sección de futuras integraciones */}
             <div className="text-center py-8">

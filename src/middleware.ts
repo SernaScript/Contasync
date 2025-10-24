@@ -65,7 +65,7 @@ const verifyToken = async (token: string): Promise<{ userId: string } | null> =>
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  console.log(`🔒 Middleware processing: ${pathname}`)
+  console.log(`Middleware processing: ${pathname}`)
 
   // Skip middleware for static files and API routes
   if (
@@ -73,13 +73,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/') ||
     pathname.includes('.') // Static files
   ) {
-    console.log(`⏭️ Skipping middleware for: ${pathname}`)
+    console.log(`Skipping middleware for: ${pathname}`)
     return NextResponse.next()
   }
 
   // Allow public routes
   if (PUBLIC_ROUTES.includes(pathname)) {
-    console.log(`✅ Public route allowed: ${pathname}`)
+    console.log(`Public route allowed: ${pathname}`)
     return NextResponse.next()
   }
 
@@ -87,7 +87,7 @@ export async function middleware(request: NextRequest) {
   const token = getTokenFromRequest(request)
   
   if (!token) {
-    console.log(`❌ No auth token found for: ${pathname}`)
+    console.log(`No auth token found for: ${pathname}`)
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
@@ -97,14 +97,14 @@ export async function middleware(request: NextRequest) {
   try {
     const payload = await verifyToken(token)
     if (!payload) {
-      console.log(`❌ Invalid token for: ${pathname}`)
+      console.log(`Invalid token for: ${pathname}`)
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
     }
-    console.log(`✅ Token verified for: ${pathname}`)
+    console.log(`Token verified for: ${pathname}`)
   } catch (error) {
-    console.log(`❌ Token verification failed for: ${pathname}`)
+    console.log(`Token verification failed for: ${pathname}`)
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
@@ -112,7 +112,7 @@ export async function middleware(request: NextRequest) {
 
   // For now, we only verify JWT token in middleware
   // Role-based permissions will be checked in the actual pages/components
-  console.log(`✅ Access granted to: ${pathname}`)
+  console.log(`Access granted to: ${pathname}`)
   return NextResponse.next()
 }
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { decryptIfNeeded } from '@/lib/encryption';
+import { getValidAccessToken } from './accessTokenService';
 
 export interface SiigoCredentials {
   apiUser: string;
@@ -107,6 +108,7 @@ export async function authenticateWithSiigo(): Promise<string> {
 
 /**
  * Realiza una petición autenticada a la API de Siigo con token
+ * Utiliza el sistema de tokens con renovación automática cada 24 horas
  * @param endpoint - Endpoint de la API
  * @param options - Opciones adicionales para la petición
  * @returns Respuesta de la API
@@ -121,7 +123,8 @@ export async function makeAuthenticatedSiigoRequest(
     throw new Error('No se encontraron credenciales de Siigo configuradas');
   }
 
-  const token = await authenticateWithSiigo();
+  // Obtener token válido (se renueva automáticamente si es necesario)
+  const token = await getValidAccessToken();
   
   const baseUrl = 'https://api.siigo.com';
   const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;

@@ -4,6 +4,7 @@ import './globals.css'
 import { PageLoader } from '@/components/ui/loading'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SidebarProvider } from '@/contexts/SidebarContext'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
             </PageLoader>
           </SidebarProvider>
         </AuthProvider>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   )
