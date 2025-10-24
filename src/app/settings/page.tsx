@@ -137,6 +137,7 @@ interface SiigoTable {
   updatedAt?: string;
 }
 
+
 // Tablas predefinidas de Siigo
 const PREDEFINED_SIIGO_TABLES = [
   {
@@ -266,6 +267,7 @@ export default function ConfiguracionPage() {
     createdBy: ''
   });
 
+
   const loadRoles = async () => {
     setLoading(true);
     try {
@@ -352,6 +354,7 @@ export default function ConfiguracionPage() {
       setLoading(false);
     }
   };
+
 
   const loadExcludedThirdParties = async (ruleId: string) => {
     try {
@@ -1346,6 +1349,13 @@ export default function ConfiguracionPage() {
         return;
       }
 
+      // Si es proveedores, navegar a la página de proveedores
+      if (predefinedTable.tableType === 'SUPPLIERS') {
+        setIsShowingPredefinedTables(false);
+        window.location.href = '/settings/providers';
+        return;
+      }
+
       const response = await fetch('/api/siigo-tables', {
         method: 'POST',
         headers: {
@@ -1394,6 +1404,7 @@ export default function ConfiguracionPage() {
       setIsShowingPredefinedTables(false);
     }, 300); // Duración de la animación
   };
+
 
   const getRuleTypeInfo = (ruleType: string) => {
     const types: { [key: string]: { label: string; description: string; icon: React.ReactNode } } = {
