@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { encrypt, decrypt, encryptIfNeeded, decryptIfNeeded } from '@/lib/encryption';
 
 // GET - Obtener credenciales SIIGO
 export async function GET(request: NextRequest) {
@@ -25,9 +26,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Si se solicita la clave real (para edición), devolverla sin enmascarar
+    // Si se solicita la clave real (para edición), descifrarla
     const responseCredentials = includeRealKey 
-      ? credentials 
+      ? {
+          ...credentials,
+          accessKey: credentials.accessKey ? decryptIfNeeded(credentials.accessKey) : ''
+        }
       : {
           ...credentials,
           accessKey: credentials.accessKey ? '••••••••••••••••••••••••••••••••' : ''
@@ -40,7 +44,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error obteniendo credenciales SIIGO:', error);
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor'
@@ -72,11 +75,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Crear nuevas credenciales
+    // Crear nuevas credenciales con accessKey cifrada
     const newCredentials = await prisma.siigoCredentials.create({
       data: {
         apiUser,
-        accessKey,
+        accessKey: encrypt(accessKey),
         applicationType,
         isActive: true
       }
@@ -95,7 +98,6 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error creando credenciales SIIGO:', error);
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor'
@@ -131,7 +133,7 @@ export async function PUT(request: NextRequest) {
     // Preparar datos para actualizar
     const updateData: any = {};
     if (apiUser !== undefined) updateData.apiUser = apiUser;
-    if (accessKey !== undefined) updateData.accessKey = accessKey;
+    if (accessKey !== undefined) updateData.accessKey = encrypt(accessKey);
     if (applicationType !== undefined) updateData.applicationType = applicationType;
 
     // Actualizar credenciales
@@ -153,7 +155,6 @@ export async function PUT(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error actualizando credenciales SIIGO:', error);
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor'

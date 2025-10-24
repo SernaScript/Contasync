@@ -1,12 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { decryptIfNeeded } from '@/lib/encryption';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { apiUser, accessKey } = body;
+    const { apiUser, accessKey, useStoredCredentials } = body;
+
+    let finalApiUser = apiUser;
+    let finalAccessKey = accessKey;
+
+    let storedCredentials = null;
+    
+    // Si se solicita usar credenciales almacenadas
+    if (useStoredCredentials) {
+      storedCredentials = await prisma.siigoCredentials.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (!storedCredentials) {
+        return NextResponse.json({
+          success: false,
+          error: 'No se encontraron credenciales almacenadas'
+        }, { status: 404 });
+      }
+
+      finalApiUser = storedCredentials.apiUser;
+      finalAccessKey = decryptIfNeeded(storedCredentials.accessKey);
+    }
 
     // Validar que se proporcionen las credenciales
-    if (!apiUser || !accessKey) {
+    if (!finalApiUser || !finalAccessKey) {
       return NextResponse.json({
         success: false,
         error: 'Usuario API y clave de acceso son requeridos'
@@ -18,11 +43,11 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Partner-Id': 'Contasync'
+        'Partner-Id': useStoredCredentials ? storedCredentials.applicationType : 'Contasync'
       },
       body: JSON.stringify({
-        username: apiUser,
-        access_key: accessKey
+        username: finalApiUser,
+        access_key: finalAccessKey
       })
     });
 
@@ -66,14 +91,11 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error testing SIIGO connection:', error);
-    
     return NextResponse.json({
       success: false,
       message: `Error de conexión: ${error instanceof Error ? error.message : 'Error desconocido'}`,
       data: {
-        error: error instanceof Error ? error.message : 'Error desconocido',
-        stack: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : 'Error desconocido'
       }
     }, { status: 500 });
   }

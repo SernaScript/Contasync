@@ -65,5 +65,9 @@ JWT_SECRET="your-super-secret-jwt-key-change-in-production"
 # SIGIO_API_URL="https://api.siigo.com"
 # SIGIO_API_VERSION="v1"
 
+# Clave de cifrado para credenciales de Siigo (32 caracteres mínimo)
+# IMPORTANTE: Cambia esta clave en producción y manténla segura
+ENCRYPTION_KEY="your-32-character-secret-key-here!"
+
 
 

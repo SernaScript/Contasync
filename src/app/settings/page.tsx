@@ -2666,6 +2666,64 @@ export default function ConfiguracionPage() {
                     </div>
                   )}
 
+                  {/* Botón de test de conexión con credenciales almacenadas */}
+                  {siigoCredentials.id && !isEditingSiigo && (
+                    <div className="p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Wifi className="h-4 w-4" />
+                          <span>Probar conexión con credenciales almacenadas</span>
+                        </div>
+                        <Button 
+                          size="sm"
+                          onClick={async () => {
+                            setIsTestingConnection(true);
+                            setConnectionTestResult(null);
+                            setHasSuccessfulConnection(false);
+
+                            try {
+                              const response = await fetch('/api/siigo-credentials/test-connection', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                  useStoredCredentials: true
+                                })
+                              });
+
+                              const result = await response.json();
+                              setConnectionTestResult(result);
+                              setHasSuccessfulConnection(result.success);
+                            } catch (error) {
+                              setConnectionTestResult({
+                                success: false,
+                                message: 'Error de conexión: ' + (error instanceof Error ? error.message : 'Error desconocido')
+                              });
+                              setHasSuccessfulConnection(false);
+                            } finally {
+                              setIsTestingConnection(false);
+                            }
+                          }}
+                          disabled={isTestingConnection}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {isTestingConnection ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Probando...
+                            </>
+                          ) : (
+                            <>
+                              <Wifi className="h-3 w-3 mr-2" />
+                              Probar Conexión
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Formulario de configuración */}
                   {isEditingSiigo && (
                     <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
@@ -2744,26 +2802,6 @@ export default function ConfiguracionPage() {
                   <div className="flex gap-2 pt-2">
                     {!isEditingSiigo ? (
                       <>
-                        {siigoCredentials.id && (
-                          <Button 
-                            size="sm"
-                            onClick={testSiigoConnection}
-                            disabled={isTestingConnection}
-                            className="bg-green-600 hover:bg-green-700 flex-1"
-                          >
-                            {isTestingConnection ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                Probando...
-                              </>
-                            ) : (
-                              <>
-                                <Wifi className="h-3 w-3 mr-2" />
-                                Probar Conexión
-                              </>
-                            )}
-                          </Button>
-                        )}
                         <Button 
                           size="sm"
                           onClick={async () => {
