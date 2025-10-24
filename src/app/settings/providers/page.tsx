@@ -18,7 +18,8 @@ import {
   Download,
   ArrowLeft,
   Search,
-  Filter
+  Filter,
+  Check
 } from "lucide-react"
 
 interface Provider {
@@ -62,6 +63,14 @@ export default function ProvidersPage() {
   const [migrationProgress, setMigrationProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive' | 'migrated'>('all');
+  
+  // Estados para datos de Siigo
+  const [isLoadingSiigo, setIsLoadingSiigo] = useState(false);
+  const [siigoResult, setSiigoResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
 
   const loadProviders = async () => {
     setLoading(true);
@@ -234,6 +243,41 @@ export default function ProvidersPage() {
     }
   };
 
+  const handleConsultSiigo = async () => {
+    setIsLoadingSiigo(true);
+    setSiigoResult(null);
+
+    try {
+      const response = await fetch('/api/providers/siigo');
+      const result = await response.json();
+
+      if (result.success) {
+        setSiigoResult({
+          success: true,
+          message: `Consulta exitosa: Se encontraron ${result.data.totalCount} proveedores en Siigo`,
+          details: result.data
+        });
+        console.log('Consulta a Siigo exitosa:', result.data);
+      } else {
+        setSiigoResult({
+          success: false,
+          message: result.error || 'Error desconocido al consultar Siigo',
+          details: result.details
+        });
+        console.error('Error consultando Siigo:', result.error);
+      }
+    } catch (error) {
+      setSiigoResult({
+        success: false,
+        message: 'Error de conexión al consultar Siigo',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+      console.error('Error consultando Siigo:', error);
+    } finally {
+      setIsLoadingSiigo(false);
+    }
+  };
+
   // Filtrar proveedores
   const filteredProviders = providers.filter(provider => {
     const matchesSearch = provider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -335,6 +379,23 @@ export default function ProvidersPage() {
                 </CardDescription>
               </div>
               <div className="flex gap-2">
+                <Button 
+                  onClick={handleConsultSiigo}
+                  disabled={isLoadingSiigo}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {isLoadingSiigo ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Consultando...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Consultar Siigo
+                    </>
+                  )}
+                </Button>
                 <Button 
                   onClick={handleMigrateProviders}
                   disabled={isMigratingProviders}
@@ -639,6 +700,55 @@ export default function ProvidersPage() {
                 <p className="text-sm text-gray-600">
                   Por favor espera mientras se migran los proveedores. Este proceso puede tomar varios minutos.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Resultado de consulta a Siigo */}
+        {siigoResult && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className={`flex items-center gap-3 ${
+                siigoResult.success ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {siigoResult.success ? (
+                  <Check className="h-6 w-6" />
+                ) : (
+                  <X className="h-6 w-6" />
+                )}
+                <div className="flex-1">
+                  <h3 className={`font-medium ${
+                    siigoResult.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {siigoResult.success ? 'Consulta Exitosa' : 'Error en la Consulta'}
+                  </h3>
+                  <p className={`text-sm mt-1 ${
+                    siigoResult.success ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {siigoResult.message}
+                  </p>
+                  {siigoResult.details && !siigoResult.success && (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-xs text-red-600 hover:text-red-800">
+                        Ver detalles del error
+                      </summary>
+                      <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded">
+                        <pre className="text-xs text-red-800 overflow-auto max-h-32">
+                          {JSON.stringify(siigoResult.details, null, 2)}
+                        </pre>
+                      </div>
+                    </details>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSiigoResult(null)}
+                  className={siigoResult.success ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
