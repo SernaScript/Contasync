@@ -242,8 +242,8 @@ export default function MigrateInvoicesPage() {
   };
 
   const handleMigrate = (invoice: InvoiceMigration) => {
-    console.log('Migrating invoice:', invoice);
-    // Aquí implementarías la lógica de migración
+    // Navegar a la página de migración con el ID del documento
+    window.location.href = `/migrate-invoices/${invoice.id}`;
   };
 
   const openXMLModal = () => {

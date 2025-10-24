@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const filePath = searchParams.get('path');
+    const embed = searchParams.get('embed') === 'true';
     
     if (!filePath) {
       return NextResponse.json({
@@ -73,13 +74,25 @@ export async function GET(request: NextRequest) {
         break;
     }
 
+    // Configurar headers según si es para embebido o descarga
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Content-Length': fileBuffer.length.toString(),
+    };
+
+    if (embed) {
+      // Para embebido, no agregar Content-Disposition o usar inline
+      headers['Content-Disposition'] = `inline; filename="${fileName}"`;
+      // Agregar headers para permitir embebido en iframe
+      headers['X-Frame-Options'] = 'SAMEORIGIN';
+    } else {
+      // Para descarga, forzar attachment
+      headers['Content-Disposition'] = `attachment; filename="${fileName}"`;
+    }
+
     return new NextResponse(fileBuffer, {
       status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${fileName}"`,
-        'Content-Length': fileBuffer.length.toString(),
-      },
+      headers,
     });
 
   } catch (error) {
