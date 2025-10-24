@@ -216,7 +216,23 @@ model SiigoCredentials {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  // Relations
+  accessTokens     AccessToken[]
+
   @@map("siigo_credentials")
+}
+
+model AccessToken {
+  id                String   @id @default(uuid())
+  token             String   @unique
+  siigoCredentialsId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  siigoCredentials  SiigoCredentials @relation(fields: [siigoCredentialsId], references: [id], onDelete: Cascade)
+
+  @@map("access_tokens")
 }
 
 // Accounting Models
