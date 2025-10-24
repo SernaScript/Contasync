@@ -28,9 +28,6 @@ model User {
   sessions Session[]
   
   // Business Relations
-  identificationTypeId String?
-  identificationType   IdentificationType? @relation(fields: [identificationTypeId], references: [id])
-  userIdentificationNumber String?
   invoices Invoice[]
 
   @@map("users")
@@ -95,34 +92,27 @@ model Session {
 }
 
 // Business Models
-model IdentificationType {
-  id                    String   @id @default(cuid())
-  identificationTypeName String
-  identificationTypeEntity String
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+model Provider {
+  id            String   @id @default(cuid())
+  siigoId       String   @unique // ID de Siigo
+  type          String   // "Customer", "Supplier", etc.
+  personType    String   // "Person", "Company"
+  idTypeCode    String   // Código del tipo de identificación
+  idTypeName    String   // Nombre del tipo de identificación
+  identification String  // Número de identificación
+  name          String   // Nombre completo (concatenado de name array)
+  active        Boolean  @default(true)
+  isMigrated    Boolean  @default(false)
+  migrationDate DateTime?
+  createdBy     String   // Usuario que creó el registro
+  updatedBy     String?  // Usuario que actualizó el registro
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
-  users        User[]
-  thirdParties ThirdParty[]
+  invoices Invoice[]
 
-  @@map("identification_types")
-}
-
-model ThirdParty {
-  id                        String   @id @default(cuid())
-  thirdPartyName            String
-  thirdPartyIdentification  String
-  thirdPartyStatus          Int      @default(1)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-
-  // Relations
-  identificationTypeId String
-  identificationType   IdentificationType @relation(fields: [identificationTypeId], references: [id])
-  invoices            Invoice[]
-
-  @@map("third_parties")
+  @@map("providers")
 }
 
 model Invoice {
@@ -136,8 +126,8 @@ model Invoice {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  thirdPartyId String
-  thirdParty   ThirdParty @relation(fields: [thirdPartyId], references: [id])
+  providerId   String
+  provider     Provider   @relation(fields: [providerId], references: [id])
   userId       String
   user         User       @relation(fields: [userId], references: [id])
   invoiceProducts InvoiceProduct[]
